@@ -3,7 +3,7 @@
         'name' => 'ianmu/auth-system',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '95deb1ee5ad5905e3288adfc17e7b9dc132e685c',
+        'reference' => '87404c6af53cd57390b4276fa30651ebae26039e',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'ianmu/auth-system' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '95deb1ee5ad5905e3288adfc17e7b9dc132e685c',
+            'reference' => '87404c6af53cd57390b4276fa30651ebae26039e',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
