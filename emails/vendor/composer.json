@@ -1,0 +1,21 @@
+{
+    "name": "ianmu/auth-system",
+    "description": "user authentication with 2FA",
+    "autoload": {
+        "psr-4": {
+            "Ianmu\\AuthSystem\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Ian Munyoike",
+            "email": "ian.kariuki@strathmore.edu"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "robthree/twofactorauth": "^3.0",
+        "phpmailer/phpmailer": "^6.10",
+        "twilio/sdk": "^8.8"
+    }
+}
