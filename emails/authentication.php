@@ -72,8 +72,8 @@ if (isset($_POST['login'])) {
                         $mail->isSMTP();
                         $mail->Host = 'smtp.gmail.com';
                         $mail->SMTPAuth = true;
-                        $mail->Username = 'your-email@gmail.com';  // Update with your email
-                        $mail->Password = 'your-app-password';     // Update with your app password
+                        $mail->Username = 'lynn.dede@strathmore.edu';  // Update with your email
+                        $mail->Password = 'okhr vnik fldt fwdg';     // Update with your app password
                         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
                         $mail->Port = 587;
 
