@@ -7,6 +7,10 @@ namespace Composer\Autoload;
 class ComposerStaticInit3f2928cd84f2d0da5b6454b5fcbe610b
 {
     public static $prefixLengthsPsr4 = array (
+        'T' => 
+        array (
+            'Twilio\\' => 7,
+        ),
         'R' => 
         array (
             'RobThree\\Auth\\' => 14,
@@ -22,6 +26,10 @@ class ComposerStaticInit3f2928cd84f2d0da5b6454b5fcbe610b
     );
 
     public static $prefixDirsPsr4 = array (
+        'Twilio\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/twilio/sdk/src/Twilio',
+        ),
         'RobThree\\Auth\\' => 
         array (
             0 => __DIR__ . '/..' . '/robthree/twofactorauth/lib',
