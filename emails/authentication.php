@@ -1,19 +1,27 @@
+```php
 <?php
 session_start();
 require 'vendor/autoload.php';
 
-use RobThree\Auth\TwoFactorAuth;  // Updated: Correct namespace for robthree/twofactorauth
+use RobThree\Auth\TwoFactorAuth;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
+use Twilio\Rest\Client;
+use Dotenv\Dotenv;
+use RobThree\Auth\Providers\Qr\QRServerProvider;
 
-// Database connection (update with your MariaDB credentials)
+// Load environment variables
+$dotenv = Dotenv::createImmutable(__DIR__);
+$dotenv->load();
+
+// Database connection (update with your MariaDB credentials in .env too if you want)
 $conn = new mysqli("localhost", "your-username", "your-password", "auth_db");
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// Initialize 2FA library (requires a QR code provider; using built-in BaconQrCode by default)
-$tfa = new TwoFactorAuth();  // This uses the default QR provider (BaconQrCode)
+// Initialize 2FA library
+$tfa = new TwoFactorAuth(new QRServerProvider());
 
 // Helper function to generate random 2FA code for email/SMS
 function generate2FACode() {
@@ -25,7 +33,7 @@ if (isset($_POST['register'])) {
     $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
     $phone = filter_var($_POST['phone'], FILTER_SANITIZE_STRING);
     $password = password_hash($_POST['password'], PASSWORD_BCRYPT);
-    $secret = $tfa->createSecret(); // Generate TOTP secret
+    $secret = $tfa->createSecret();
 
     $stmt = $conn->prepare("INSERT INTO users (email, phone, password, tfa_secret) VALUES (?, ?, ?, ?)");
     $stmt->bind_param("ssss", $email, $phone, $password, $secret);
@@ -33,7 +41,6 @@ if (isset($_POST['register'])) {
         echo "Registration successful! Scan this QR code with Google Authenticator: ";
         $qrCodeUrl = $tfa->getQRCodeImageAsDataUri("MyApp:$email", $secret);
         echo "<img src='$qrCodeUrl' alt='QR Code for 2FA'>";
-        // Optional: Verify the setup by asking for a code immediately
     } else {
         echo "Error during registration: " . $conn->error;
     }
@@ -63,44 +70,45 @@ if (isset($_POST['login'])) {
             } else {
                 $code = generate2FACode();
                 $_SESSION['tfa_code'] = $code;
-                $_SESSION['tfa_expiry'] = time() + 300;  // Code expires in 5 minutes
+                $_SESSION['tfa_expiry'] = time() + 300;  // expires in 5 minutes
 
                 if ($_POST['tfa_method'] === 'email') {
                     // Send 2FA code via email
                     $mail = new PHPMailer(true);
                     try {
                         $mail->isSMTP();
-                        $mail->Host = 'smtp.gmail.com';
+                        $mail->Host = $_ENV['MAIL_HOST'];
                         $mail->SMTPAuth = true;
-                        $mail->Username = 'lynn.dede@strathmore.edu';  // Update with your email
-                        $mail->Password = 'okhr vnik fldt fwdg';     // Update with your app password
+                        $mail->Username = $_ENV['MAIL_USERNAME'];
+                        $mail->Password = $_ENV['MAIL_PASSWORD'];
                         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                        $mail->Port = 587;
+                        $mail->Port = $_ENV['MAIL_PORT'];
 
-                        $mail->setFrom('your-email@gmail.com', 'Auth System');
+                        $mail->setFrom($_ENV['MAIL_FROM'], $_ENV['MAIL_FROM_NAME']);
                         $mail->addAddress($user['email']);
                         $mail->isHTML(false);
                         $mail->Subject = 'Your 2FA Code';
                         $mail->Body = "Your 2FA code is: $code. It expires in 5 minutes.";
                         $mail->send();
-                        echo "Email sent with 2FA code.";
+
                         header("Location: verify_2fa.php");
                         exit();
                     } catch (Exception $e) {
                         echo "Email could not be sent. Error: {$mail->ErrorInfo}";
                     }
                 } elseif ($_POST['tfa_method'] === 'sms') {
-                    // Placeholder for SMS (integrate Twilio if installed)
-                    // Example with Twilio:
-                    // use Twilio\Rest\Client;
-                    // $client = new Client('ACCOUNT_SID', 'AUTH_TOKEN');
-                    // $client->messages->create($user['phone'], [
-                    //     'from' => 'YOUR_TWILIO_NUMBER',
-                    //     'body' => "Your 2FA code is: $code. Expires in 5 minutes."
-                    // ]);
-                    echo "SMS 2FA code sent (placeholder - integrate Twilio for real SMS).";
-                    header("Location: verify_2fa.php");
-                    exit();
+                    try {
+                        $twilio = new Client($_ENV['TWILIO_SID'], $_ENV['TWILIO_AUTH_TOKEN']);
+                        $twilio->messages->create($user['phone'], [
+                            'from' => $_ENV['TWILIO_NUMBER'],
+                            'body' => "Your 2FA code is: $code. Expires in 5 minutes."
+                        ]);
+
+                        header("Location: verify_2fa.php");
+                        exit();
+                    } catch (Exception $e) {
+                        echo "SMS could not be sent. Error: {$e->getMessage()}";
+                    }
                 }
             }
         } else {
@@ -141,3 +149,4 @@ if (isset($_POST['login'])) {
     </form>
 </body>
 </html>
+```
