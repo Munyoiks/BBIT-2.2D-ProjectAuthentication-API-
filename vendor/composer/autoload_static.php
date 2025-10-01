@@ -13,6 +13,10 @@ class ComposerStaticInitb6fb837d340d1d32b5bc244e35e9be95
     );
 
     public static $prefixLengthsPsr4 = array (
+        'T' => 
+        array (
+            'Twilio\\' => 7,
+        ),
         'S' => 
         array (
             'Symfony\\Polyfill\\Php80\\' => 23,
@@ -26,6 +30,7 @@ class ComposerStaticInitb6fb837d340d1d32b5bc244e35e9be95
         'P' => 
         array (
             'PhpOption\\' => 10,
+            'PHPMailer\\PHPMailer\\' => 20,
         ),
         'I' => 
         array (
@@ -38,10 +43,19 @@ class ComposerStaticInitb6fb837d340d1d32b5bc244e35e9be95
         'D' => 
         array (
             'Dotenv\\' => 7,
+            'DASPRiD\\Enum\\' => 13,
+        ),
+        'B' => 
+        array (
+            'BaconQrCode\\' => 12,
         ),
     );
 
     public static $prefixDirsPsr4 = array (
+        'Twilio\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/twilio/sdk/src/Twilio',
+        ),
         'Symfony\\Polyfill\\Php80\\' => 
         array (
             0 => __DIR__ . '/..' . '/symfony/polyfill-php80',
@@ -62,6 +76,10 @@ class ComposerStaticInitb6fb837d340d1d32b5bc244e35e9be95
         array (
             0 => __DIR__ . '/..' . '/phpoption/phpoption/src/PhpOption',
         ),
+        'PHPMailer\\PHPMailer\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/phpmailer/phpmailer/src',
+        ),
         'Ianmu\\AuthSystem\\' => 
         array (
             0 => __DIR__ . '/../..' . '/src',
@@ -73,6 +91,14 @@ class ComposerStaticInitb6fb837d340d1d32b5bc244e35e9be95
         'Dotenv\\' => 
         array (
             0 => __DIR__ . '/..' . '/vlucas/phpdotenv/src',
+        ),
+        'DASPRiD\\Enum\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/dasprid/enum/src',
+        ),
+        'BaconQrCode\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/bacon/bacon-qr-code/src',
         ),
     );
 

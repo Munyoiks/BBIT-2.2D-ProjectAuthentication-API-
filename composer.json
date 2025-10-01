@@ -1,8 +1,6 @@
 {
     "name": "ianmu/auth-system",
-    "description": "user authentication with 2fa",
-    "type": "project",
-    "license": "MIT",
+    "description": "user authentication with 2FA",
     "autoload": {
         "psr-4": {
             "Ianmu\\AuthSystem\\": "src/"
@@ -16,7 +14,10 @@
     ],
     "minimum-stability": "stable",
     "require": {
-        "vlucas/phpdotenv": "5.6",
-        "robthree/twofactorauth": "^3.0"
+        "vlucas/phpdotenv": "^5.6",
+        "twilio/sdk": "^8.0",
+        "phpmailer/phpmailer": "^6.8",
+        "robthree/twofactorauth": "^3.0.2",
+        "bacon/bacon-qr-code": "^2.1"
     }
 }

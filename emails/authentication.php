@@ -1,121 +1,190 @@
 <?php
 session_start();
 
-$autoloadPath = __DIR__ . '/../vendor/autoload.php';
-if (!file_exists($autoloadPath)) {
-    die("Autoloader not found at: $autoloadPath. Current directory: " . __DIR__);
-}
-require $autoloadPath;
+require __DIR__ . '/../vendor/autoload.php';
 
+use Dotenv\Dotenv;
 use RobThree\Auth\TwoFactorAuth;
-use RobThree\Auth\Providers\Qr\QRServerProvider;
+use RobThree\Auth\Providers\Qr\IQRCodeProvider;
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 use Twilio\Rest\Client;
-use Dotenv\Dotenv;
 
-// Load .env from parent directory
-$dotenv = Dotenv::createImmutable(__DIR__ . '/..');
+// Load .env
+$dotenv = Dotenv::createImmutable(__DIR__ . '/../');
 $dotenv->load();
 
-// Database connection
+// DB connection
 $conn = new mysqli($_ENV['DB_HOST'], $_ENV['DB_USER'], $_ENV['DB_PASS'], $_ENV['DB_NAME']);
 if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    die("DB Connection failed: " . $conn->connect_error);
 }
 
-// Initialize 2FA library
-$tfa = new TwoFactorAuth(new QRServerProvider());
+// ---------------- Phone Formatting ----------------
+function formatPhone($phone) {
+    if (!$phone) return false;
+    $phone = preg_replace('/\D/', '', $phone); // remove non-digits
 
-// Helper: generate 6-digit 2FA code
-function generate2FACode() {
-    return rand(100000, 999999);
+    if (preg_match('/^0\d{9}$/', $phone)) {
+        return '+254' . substr($phone, 1);
+    } elseif (preg_match('/^254\d{9}$/', $phone)) {
+        return '+' . $phone;
+    } elseif (preg_match('/^\+254\d{9}$/', $phone)) {
+        return $phone;
+    }
+    return false;
 }
 
-// Registration
+// ---------------- QR Code Provider ----------------
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\Image\ImagickImageBackEnd;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
+
+class BaconQrCodeProvider implements IQRCodeProvider {
+    public function getQRCodeImage(string $qrText, int $size): string {
+        try {
+            $renderer = new ImageRenderer(
+                new RendererStyle($size),
+                new ImagickImageBackEnd()
+            );
+            $writer = new Writer($renderer);
+            return $writer->writeString($qrText);
+        } catch (\Exception $e) {
+            error_log("QR Code generation failed: " . $e->getMessage());
+            return '';
+        }
+    }
+
+    public function getMimeType(): string {
+        return 'image/png';
+    }
+}
+
+// ---------------- 2FA Setup ----------------
+try {
+    $qrCodeProvider = new BaconQrCodeProvider();
+    $tfa = new TwoFactorAuth(
+        $qrCodeProvider,   // 1. QR Provider
+        'MojoAuth',        // 2. Issuer
+        6,                 // 3. Digits
+        30                 // 4. Period (30s default, SHA1 used internally)
+    );
+} catch (Throwable $e) {
+    die("Failed to initialize 2FA: " . $e->getMessage());
+}
+
+// -------------------- Registration --------------------
 if (isset($_POST['register'])) {
-    $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
-    $phone = filter_var($_POST['phone'], FILTER_SANITIZE_STRING);
+    $email = filter_var($_POST['email'], FILTER_VALIDATE_EMAIL);
+    $phone = formatPhone($_POST['phone']);
     $password = password_hash($_POST['password'], PASSWORD_BCRYPT);
+
+    if (!$email) die(" Invalid email format");
+    if (!$phone) die(" Invalid Kenyan phone number");
+
+    // Check if user already exists
+    $checkStmt = $conn->prepare("SELECT id FROM users WHERE email = ? OR phone = ?");
+    $checkStmt->bind_param("ss", $email, $phone);
+    $checkStmt->execute();
+    $checkResult = $checkStmt->get_result();
+
+    if ($checkResult->num_rows > 0) {
+        echo " Email or phone already exists.";
+        $checkStmt->close();
+        exit();
+    }
+    $checkStmt->close();
+
+    // Generate secret for this user
     $secret = $tfa->createSecret();
 
     $stmt = $conn->prepare("INSERT INTO users (email, phone, password, tfa_secret) VALUES (?, ?, ?, ?)");
     $stmt->bind_param("ssss", $email, $phone, $password, $secret);
+    
     if ($stmt->execute()) {
-        echo "Registration successful! Scan this QR code with Google Authenticator: ";
-        $qrCodeUrl = $tfa->getQRCodeImageAsDataUri("MyApp:$email", $secret);
-        echo "<img src='$qrCodeUrl' alt='QR Code for 2FA'>";
+        echo " Registration successful!<br>";
+
+        // Generate QR code
+        try {
+            $qr = $tfa->getQRCodeImageAsDataUri("MojoAuth:$email", $secret);
+            if ($qr) {
+                echo "Scan this QR code with Google Authenticator:<br>";
+                echo "<img src='$qr' alt='QR Code'><br>";
+            }
+        } catch (Exception $e) {
+            echo " QR code generation failed, but registration was successful.<br>";
+        }
+
+        echo "<strong>Manual setup code:</strong> " . $secret . "<br>";
+        echo "<a href='index.php'>Proceed to Login</a>";
     } else {
-        echo "Error during registration: " . $conn->error;
+        echo " Database Error: " . $conn->error;
     }
     $stmt->close();
 }
 
-// Login
+// -------------------- Login --------------------
 if (isset($_POST['login'])) {
-    $email = filter_var($_POST['email'], FILTER_SANITIZE_EMAIL);
+    $email = filter_var($_POST['email'], FILTER_VALIDATE_EMAIL);
     $password = $_POST['password'];
 
-    $stmt = $conn->prepare("SELECT id, email, phone, password, tfa_secret FROM users WHERE email = ?");
+    if (!$email) {
+        echo " Invalid email format.";
+        exit();
+    }
+
+    $stmt = $conn->prepare("SELECT id, password, tfa_secret, phone FROM users WHERE email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
+
     if ($user = $result->fetch_assoc()) {
         if (password_verify($password, $user['password'])) {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['tfa_secret'] = $user['tfa_secret'];
-            $_SESSION['email'] = $user['email'];
+            $_SESSION['email'] = $email;
             $_SESSION['phone'] = $user['phone'];
-            $_SESSION['tfa_method'] = $_POST['tfa_method'];
+            $_SESSION['login_time'] = time();
 
-            if ($_POST['tfa_method'] === 'app') {
-                header("Location: verify_2fa.php");
-                exit();
-            }
-
-            $code = generate2FACode();
+            // Generate 2FA code
+            $code = rand(100000, 999999);
             $_SESSION['tfa_code'] = $code;
-            $_SESSION['tfa_expiry'] = time() + 300;
+            $_SESSION['tfa_expiry'] = time() + 300; // 5 minutes
 
-            if ($_POST['tfa_method'] === 'email') {
-                $mail = new PHPMailer(true);
-                try {
-                    $mail->isSMTP();
-                    $mail->Host = $_ENV['MAIL_HOST'];
-                    $mail->SMTPAuth = true;
-                    $mail->Username = $_ENV['MAIL_USERNAME'];
-                    $mail->Password = $_ENV['MAIL_PASSWORD'];
-                    $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-                    $mail->Port = $_ENV['MAIL_PORT'];
-                    $mail->setFrom($_ENV['MAIL_FROM'], $_ENV['MAIL_FROM_NAME']);
-                    $mail->addAddress($user['email']);
-                    $mail->isHTML(false);
-                    $mail->Subject = 'Your 2FA Code';
-                    $mail->Body = "Your 2FA code is: $code. Expires in 5 minutes.";
-                    $mail->send();
-                    header("Location: verify_2fa.php");
-                    exit();
-                } catch (Exception $e) {
-                    echo "Email could not be sent. Error: {$mail->ErrorInfo}";
-                }
-            } elseif ($_POST['tfa_method'] === 'sms') {
+            // Send via SMS (Twilio)
+            if (!empty($_ENV['TWILIO_SID']) && !empty($_ENV['TWILIO_AUTH_TOKEN'])) {
                 try {
                     $twilio = new Client($_ENV['TWILIO_SID'], $_ENV['TWILIO_AUTH_TOKEN']);
-                    $twilio->messages->create($user['phone'], [
-                        'from' => $_ENV['TWILIO_NUMBER'],
-                        'body' => "Your 2FA code is: $code. Expires in 5 minutes."
-                    ]);
-                    header("Location: verify_2fa.php");
-                    exit();
+                    
+                    // Ensure formatted phone
+                    $toPhone = formatPhone($user['phone']);
+                    if (!$toPhone) {
+                        throw new Exception("Invalid phone format in DB: " . $user['phone']);
+                    }
+
+                    $twilio->messages->create(
+                        $toPhone,
+                        [
+                            'from' => $_ENV['TWILIO_NUMBER'],
+                            'body' => "Your MojoAuth 2FA code is: $code. Expires in 5 minutes."
+                        ]
+                    );
+                    echo " 2FA code sent via SMS to " . $toPhone . "<br>";
                 } catch (Exception $e) {
-                    echo "SMS could not be sent. Error: {$e->getMessage()}";
+                    echo " SMS not sent: " . $e->getMessage() . "<br>";
                 }
+            } else {
+                echo " Twilio not configured. Using code: " . $code . "<br>";
             }
+            
+            header("Location: verify2fa.php");
+            exit();
         } else {
-            echo "Invalid password.";
+            echo "❌ Invalid password.";
         }
     } else {
-        echo "User not found.";
+        echo "❌ User not found.";
     }
     $stmt->close();
 }
@@ -124,26 +193,34 @@ if (isset($_POST['login'])) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>User Authentication with 2FA</title>
+    <title>User Authentication</title>
+    <style>
+        .container { max-width: 400px; margin: 50px auto; padding: 20px; }
+        form { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 4px; }
+        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .error { color: red; margin: 10px 0; }
+        .success { color: green; margin: 10px 0; }
+        h2 { color: #333; }
+    </style>
 </head>
 <body>
-    <h2>Register</h2>
-    <form method="POST" action="">
-        <input type="email" name="email" placeholder="Email" required><br><br>
-        <input type="text" name="phone" placeholder="Phone (e.g., +254712345678)" required><br><br>
-        <input type="password" name="password" placeholder="Password" required><br><br>
-        <button type="submit" name="register">Register</button>
-    </form>
-    <h2>Login</h2>
-    <form method="POST" action="">
-        <input type="email" name="email" placeholder="Email" required><br><br>
-        <input type="password" name="password" placeholder="Password" required><br><br>
-        <select name="tfa_method">
-            <option value="app">Google Authenticator App</option>
-            <option value="email">Email Code</option>
-            <option value="sms">SMS Code</option>
-        </select><br><br>
-        <button type="submit" name="login">Login</button>
-    </form>
+    <div class="container">
+        <h2>Register</h2>
+        <form method="POST">
+            <input type="email" name="email" placeholder="Email" required>
+            <input type="text" name="phone" placeholder="Phone (e.g., 0722123456)" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <button type="submit" name="register">Register</button>
+        </form>
+
+        <h2>Login</h2>
+        <form method="POST">
+            <input type="email" name="email" placeholder="Email" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <button type="submit" name="login">Login</button>
+        </form>
+    </div>
 </body>
 </html>
