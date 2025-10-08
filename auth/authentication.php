@@ -4,8 +4,8 @@ session_start();
 // ---- DATABASE CONNECTION ----
 $host = "localhost";
 $user = "root";
-$pass = "";
-$db   = "mojo_db"; // change to your actual DB name
+$pass = "munyoiks7";
+$db   = "auth_db"; // change to your actual DB name
 
 $conn = new mysqli($host, $user, $pass, $db);
 if ($conn->connect_error) {
