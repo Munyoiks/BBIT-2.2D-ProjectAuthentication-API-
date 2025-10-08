@@ -6,9 +6,10 @@ require __DIR__ . '/../vendor/autoload.php';
 use Dotenv\Dotenv;
 use RobThree\Auth\TwoFactorAuth;
 use RobThree\Auth\Providers\Qr\IQRCodeProvider;
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-use Twilio\Rest\Client;
+use BaconQrCode\Renderer\ImageRenderer;
+use BaconQrCode\Renderer\Image\ImagickImageBackEnd;
+use BaconQrCode\Renderer\RendererStyle\RendererStyle;
+use BaconQrCode\Writer;
 
 // Load .env
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
@@ -20,11 +21,10 @@ if ($conn->connect_error) {
     die("DB Connection failed: " . $conn->connect_error);
 }
 
-// ---------------- Phone Formatting ----------------
+// Format Kenyan phone numbers into E.164
 function formatPhone($phone) {
     if (!$phone) return false;
     $phone = preg_replace('/\D/', '', $phone); // remove non-digits
-
     if (preg_match('/^0\d{9}$/', $phone)) {
         return '+254' . substr($phone, 1);
     } elseif (preg_match('/^254\d{9}$/', $phone)) {
@@ -35,44 +35,24 @@ function formatPhone($phone) {
     return false;
 }
 
-// ---------------- QR Code Provider ----------------
-use BaconQrCode\Renderer\ImageRenderer;
-use BaconQrCode\Renderer\Image\ImagickImageBackEnd;
-use BaconQrCode\Renderer\RendererStyle\RendererStyle;
-use BaconQrCode\Writer;
-
+// Custom QR provider
 class BaconQrCodeProvider implements IQRCodeProvider {
     public function getQRCodeImage(string $qrText, int $size): string {
-        try {
-            $renderer = new ImageRenderer(
-                new RendererStyle($size),
-                new ImagickImageBackEnd()
-            );
-            $writer = new Writer($renderer);
-            return $writer->writeString($qrText);
-        } catch (\Exception $e) {
-            error_log("QR Code generation failed: " . $e->getMessage());
-            return '';
-        }
+        $renderer = new ImageRenderer(
+            new RendererStyle($size),
+            new ImagickImageBackEnd()
+        );
+        $writer = new Writer($renderer);
+        return $writer->writeString($qrText);
     }
-
     public function getMimeType(): string {
         return 'image/png';
     }
 }
 
-// ---------------- 2FA Setup ----------------
-try {
-    $qrCodeProvider = new BaconQrCodeProvider();
-    $tfa = new TwoFactorAuth(
-        $qrCodeProvider,   // 1. QR Provider
-        'MojoAuth',        // 2. Issuer
-        6,                 // 3. Digits
-        30                 // 4. Period (30s default, SHA1 used internally)
-    );
-} catch (Throwable $e) {
-    die("Failed to initialize 2FA: " . $e->getMessage());
-}
+// Init 2FA
+$qrCodeProvider = new BaconQrCodeProvider();
+$tfa = new TwoFactorAuth($qrCodeProvider, 'MojoAuth', 6, 30);
 
 // -------------------- Registration --------------------
 if (isset($_POST['register'])) {
@@ -80,44 +60,31 @@ if (isset($_POST['register'])) {
     $phone = formatPhone($_POST['phone']);
     $password = password_hash($_POST['password'], PASSWORD_BCRYPT);
 
-    if (!$email) die(" Invalid email format");
-    if (!$phone) die(" Invalid Kenyan phone number");
+    if (!$email) die("Invalid email format");
+    if (!$phone) die("Invalid Kenyan phone number");
 
-    // Check if user already exists
+    // Check duplicates
     $checkStmt = $conn->prepare("SELECT id FROM users WHERE email = ? OR phone = ?");
     $checkStmt->bind_param("ss", $email, $phone);
     $checkStmt->execute();
-    $checkResult = $checkStmt->get_result();
-
-    if ($checkResult->num_rows > 0) {
+    if ($checkStmt->get_result()->num_rows > 0) {
         echo " Email or phone already exists.";
-        $checkStmt->close();
         exit();
     }
     $checkStmt->close();
 
-    // Generate secret for this user
     $secret = $tfa->createSecret();
 
     $stmt = $conn->prepare("INSERT INTO users (email, phone, password, tfa_secret) VALUES (?, ?, ?, ?)");
     $stmt->bind_param("ssss", $email, $phone, $password, $secret);
-    
+
     if ($stmt->execute()) {
         echo " Registration successful!<br>";
-
-        // Generate QR code
-        try {
-            $qr = $tfa->getQRCodeImageAsDataUri("MojoAuth:$email", $secret);
-            if ($qr) {
-                echo "Scan this QR code with Google Authenticator:<br>";
-                echo "<img src='$qr' alt='QR Code'><br>";
-            }
-        } catch (Exception $e) {
-            echo " QR code generation failed, but registration was successful.<br>";
-        }
-
-        echo "<strong>Manual setup code:</strong> " . $secret . "<br>";
-        echo "<a href='index.php'>Proceed to Login</a>";
+        $qr = $tfa->getQRCodeImageAsDataUri("MojoAuth:$email", $secret);
+        echo "Scan this QR code with Google Authenticator:<br>";
+        echo "<img src='$qr' alt='QR Code'><br>";
+        echo "<strong>Manual setup code:</strong> $secret<br>";
+        echo "<a href='auth.php'>Proceed to Login</a>";
     } else {
         echo " Database Error: " . $conn->error;
     }
@@ -151,40 +118,15 @@ if (isset($_POST['login'])) {
             $code = rand(100000, 999999);
             $_SESSION['tfa_code'] = $code;
             $_SESSION['tfa_expiry'] = time() + 300; // 5 minutes
+            $_SESSION['pending_emailjs'] = true;
 
-            // Send via SMS (Twilio)
-            if (!empty($_ENV['TWILIO_SID']) && !empty($_ENV['TWILIO_AUTH_TOKEN'])) {
-                try {
-                    $twilio = new Client($_ENV['TWILIO_SID'], $_ENV['TWILIO_AUTH_TOKEN']);
-                    
-                    // Ensure formatted phone
-                    $toPhone = formatPhone($user['phone']);
-                    if (!$toPhone) {
-                        throw new Exception("Invalid phone format in DB: " . $user['phone']);
-                    }
-
-                    $twilio->messages->create(
-                        $toPhone,
-                        [
-                            'from' => $_ENV['TWILIO_NUMBER'],
-                            'body' => "Your MojoAuth 2FA code is: $code. Expires in 5 minutes."
-                        ]
-                    );
-                    echo " 2FA code sent via SMS to " . $toPhone . "<br>";
-                } catch (Exception $e) {
-                    echo " SMS not sent: " . $e->getMessage() . "<br>";
-                }
-            } else {
-                echo " Twilio not configured. Using code: " . $code . "<br>";
-            }
-            
             header("Location: verify2fa.php");
             exit();
         } else {
-            echo "❌ Invalid password.";
+            echo " Invalid password.";
         }
     } else {
-        echo "❌ User not found.";
+        echo " User not found.";
     }
     $stmt->close();
 }
@@ -200,8 +142,6 @@ if (isset($_POST['login'])) {
         input { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 4px; }
         button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
         button:hover { background: #0056b3; }
-        .error { color: red; margin: 10px 0; }
-        .success { color: green; margin: 10px 0; }
         h2 { color: #333; }
     </style>
 </head>
