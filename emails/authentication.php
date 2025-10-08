@@ -4,12 +4,6 @@ session_start();
 require __DIR__ . '/../vendor/autoload.php';
 
 use Dotenv\Dotenv;
-use RobThree\Auth\TwoFactorAuth;
-use RobThree\Auth\Providers\Qr\IQRCodeProvider;
-use BaconQrCode\Renderer\ImageRenderer;
-use BaconQrCode\Renderer\Image\ImagickImageBackEnd;
-use BaconQrCode\Renderer\RendererStyle\RendererStyle;
-use BaconQrCode\Writer;
 
 // Load .env
 $dotenv = Dotenv::createImmutable(__DIR__ . '/../');
@@ -35,25 +29,6 @@ function formatPhone($phone) {
     return false;
 }
 
-// Custom QR provider
-class BaconQrCodeProvider implements IQRCodeProvider {
-    public function getQRCodeImage(string $qrText, int $size): string {
-        $renderer = new ImageRenderer(
-            new RendererStyle($size),
-            new ImagickImageBackEnd()
-        );
-        $writer = new Writer($renderer);
-        return $writer->writeString($qrText);
-    }
-    public function getMimeType(): string {
-        return 'image/png';
-    }
-}
-
-// Init 2FA
-$qrCodeProvider = new BaconQrCodeProvider();
-$tfa = new TwoFactorAuth($qrCodeProvider, 'MojoAuth', 6, 30);
-
 // -------------------- Registration --------------------
 if (isset($_POST['register'])) {
     $email = filter_var($_POST['email'], FILTER_VALIDATE_EMAIL);
@@ -68,25 +43,21 @@ if (isset($_POST['register'])) {
     $checkStmt->bind_param("ss", $email, $phone);
     $checkStmt->execute();
     if ($checkStmt->get_result()->num_rows > 0) {
-        echo " Email or phone already exists.";
+        echo "Email or phone already exists.";
         exit();
     }
     $checkStmt->close();
 
-    $secret = $tfa->createSecret();
-
-    $stmt = $conn->prepare("INSERT INTO users (email, phone, password, tfa_secret) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("ssss", $email, $phone, $password, $secret);
+    // Insert user (no tfa_secret needed for email-based 2FA)
+    $stmt = $conn->prepare("INSERT INTO users (email, phone, password) VALUES (?, ?, ?)");
+    $stmt->bind_param("sss", $email, $phone, $password);
 
     if ($stmt->execute()) {
-        echo " Registration successful!<br>";
-        $qr = $tfa->getQRCodeImageAsDataUri("MojoAuth:$email", $secret);
-        echo "Scan this QR code with Google Authenticator:<br>";
-        echo "<img src='$qr' alt='QR Code'><br>";
-        echo "<strong>Manual setup code:</strong> $secret<br>";
-        echo "<a href='auth.php'>Proceed to Login</a>";
+        echo "Registration successful!<br>";
+        echo "A verification email will be sent shortly. <a href='auth.php'>Proceed to Login</a>";
+        // Trigger email verification (handled by JS on page load)
     } else {
-        echo " Database Error: " . $conn->error;
+        echo "Database Error: " . $conn->error;
     }
     $stmt->close();
 }
@@ -97,11 +68,11 @@ if (isset($_POST['login'])) {
     $password = $_POST['password'];
 
     if (!$email) {
-        echo " Invalid email format.";
+        echo "Invalid email format.";
         exit();
     }
 
-    $stmt = $conn->prepare("SELECT id, password, tfa_secret, phone FROM users WHERE email = ?");
+    $stmt = $conn->prepare("SELECT id, password, phone FROM users WHERE email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -109,24 +80,40 @@ if (isset($_POST['login'])) {
     if ($user = $result->fetch_assoc()) {
         if (password_verify($password, $user['password'])) {
             $_SESSION['user_id'] = $user['id'];
-            $_SESSION['tfa_secret'] = $user['tfa_secret'];
             $_SESSION['email'] = $email;
             $_SESSION['phone'] = $user['phone'];
             $_SESSION['login_time'] = time();
 
-            // Generate 2FA code
+            // Generate 2FA code for email
             $code = rand(100000, 999999);
             $_SESSION['tfa_code'] = $code;
             $_SESSION['tfa_expiry'] = time() + 300; // 5 minutes
             $_SESSION['pending_emailjs'] = true;
 
-            header("Location: verify2fa.php");
+            // Output HTML with JS to send 2FA email
+            echo "<!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset='UTF-8'>
+                <title>2FA Verification</title>
+                <script src='https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js'></script>
+                <script src='emailConfig.js'></script> <!-- Your EmailJS config -->
+            </head>
+            <body>
+                <p>Sending 2FA code to <strong>$email</strong>...</p>
+                <script>
+                    (function() {
+                        sendVerificationEmail('$email', '$_SESSION[tfa_code]');
+                    })();
+                </script>
+            </body>
+            </html>";
             exit();
         } else {
-            echo " Invalid password.";
+            echo "Invalid password.";
         }
     } else {
-        echo " User not found.";
+        echo "User not found.";
     }
     $stmt->close();
 }
