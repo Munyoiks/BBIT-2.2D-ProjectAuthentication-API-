@@ -32,8 +32,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $check->close();
 
     // Insert user (unverified)
-    $stmt = $conn->prepare("INSERT INTO users (name, phone, email, password, verified) VALUES (?, ?, ?, ?, 0)");
-    $stmt->bind_param("ssss", $name, $phone, $email, $password);
+    $stmt = $conn->prepare("INSERT INTO users (full_name, email, phone, password) VALUES (?, ?, ?, ?)");
+    $stmt->bind_param("ssss", $name, $email, $phone, $password);
+
     if ($stmt->execute()) {
         // Generate verification code
         $code = rand(100000, 999999);
@@ -49,11 +50,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <script src='https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js'></script>
             <script>
               (function() {
-                  emailjs.init({ publicKey: 'RFl2-4eHenzarWon4' });
+                  emailjs.init({ publicKey: 'T38uilUqfOVLAnbQE' });
               })();
 
               function sendCode() {
-                  emailjs.send('service_e594fkz', 'template_wzft06q', {
+                  emailjs.send('service_hit0nhj', 'template_lyjg5vx', {
                       to_email: '$email',
                       verification_code: '$code'
                   }).then(() => {

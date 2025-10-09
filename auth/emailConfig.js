@@ -1,11 +1,11 @@
 (function() {
     emailjs.init({
-        publicKey: 'RFl2-4eHenzarWon4'
+        publicKey: 'T38uilUqfOVLAnbQE'
     });
 })();
 
 function sendVerificationEmail(email, code) {
-    return emailjs.send('service_e594fkz', 'template_wzft06q', {
+    return emailjs.send('service_hit0nhj', 'template_lyjg5vx', {
         to_email: email,
         verification_code: code
     }).then(() => {

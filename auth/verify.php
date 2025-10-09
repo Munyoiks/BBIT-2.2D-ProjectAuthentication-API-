@@ -41,12 +41,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script>
     (function(){
-      emailjs.init({ publicKey: "RFl2-4eHenzarWon4" }); // Your EmailJS Public Key
+      emailjs.init({ publicKey: "T38uilUqfOVLAnbQE" }); // Your EmailJS Public Key
     })();
 
     window.addEventListener("DOMContentLoaded", () => {
       // Automatically send the code when user lands here
-      emailjs.send("service_e594fkz", "template_wzft06q", {
+      emailjs.send("service_hit0nhj", "template_lyjg5vx", {
         to_email: "<?php echo $email; ?>",
         verification_code: "<?php echo $code; ?>"
       }).then(() => {
