@@ -1,6 +1,6 @@
 <?php
 session_start();
-require_once "db_config.php"; // simple file with your DB connection
+require_once "db_config.php";
 
 function formatPhone($phone) {
     $phone = preg_replace('/\D/', '', $phone);
@@ -20,68 +20,75 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         die("Invalid input, please try again.");
     }
 
-    // Check if email exists
-    $check = $conn->prepare("SELECT id FROM users WHERE email=? OR phone=?");
+    // Check if user exists
+    $check = $conn->prepare("SELECT id, is_verified FROM users WHERE email=? OR phone=?");
     $check->bind_param("ss", $email, $phone);
     $check->execute();
     $res = $check->get_result();
+
+    // If user exists
     if ($res->num_rows > 0) {
-        echo "Email or phone already exists. <a href='login.php'>Login</a>";
-        exit();
-    }
-    $check->close();
+        $user = $res->fetch_assoc();
 
-    // Insert user (unverified)
-    $stmt = $conn->prepare("INSERT INTO users (full_name, email, phone, password) VALUES (?, ?, ?, ?)");
-    $stmt->bind_param("ssss", $name, $email, $phone, $password);
+        // If not verified → resend code
+        if ($user['is_verified'] == 0) {
+            $code = rand(100000, 999999);
+            $_SESSION['verification_code'] = $code;
+            $_SESSION['pending_email'] = $email;
+        } else {
+            echo "Email already exists and is verified. <a href='login.php'>Login here</a>.";
+            exit();
+        }
+    } else {
+        // Insert new unverified user
+        $stmt = $conn->prepare("INSERT INTO users (full_name, email, phone, password, is_verified) VALUES (?, ?, ?, ?, 0)");
+        $stmt->bind_param("ssss", $name, $email, $phone, $password);
+        if (!$stmt->execute()) {
+            die("Database error: " . $conn->error);
+        }
+        $stmt->close();
 
-    if ($stmt->execute()) {
-        // Generate verification code
         $code = rand(100000, 999999);
         $_SESSION['verification_code'] = $code;
         $_SESSION['pending_email'] = $email;
-
-        // Output HTML that triggers EmailJS to send code
-        echo "<!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset='UTF-8'>
-            <title>Sending Verification...</title>
-            <script src='https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js'></script>
-            <script>
-              (function() {
-                  emailjs.init({ publicKey: 'T38uilUqfOVLAnbQE' });
-              })();
-
-              function sendCode() {
-                  emailjs.send('service_hit0nhj', 'template_lyjg5vx', {
-                      to_email: '$email',
-                      verification_code: '$code'
-                  }).then(() => {
-                      alert('A verification code was sent to $email');
-                      window.location.href = 'verify.php';
-                  }).catch((err) => {
-                      console.error('EmailJS error:', err);
-                      alert('Failed to send code. Please try again.');
-                      window.location.href = 'verify.php';
-                  });
-              }
-
-              window.onload = sendCode;
-            </script>
-        </head>
-        <body>
-            <p>Sending verification code to <strong>$email</strong>...</p>
-        </body>
-        </html>";
-        exit();
-    } else {
-        echo "Database error: " . $conn->error;
     }
-    $stmt->close();
+
+    // ✅ Show a page that calls EmailJS to send the code
+    ?>
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Sending Verification...</title>
+        <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+        <script src="emailConfig.js"></script>
+        <script>
+          document.addEventListener("DOMContentLoaded", () => {
+            const email = "<?php echo addslashes($_SESSION['pending_email']); ?>";
+            const code = "<?php echo $_SESSION['verification_code']; ?>";
+
+            console.log("Sending to:", email, "Code:", code); // 🧠 debug
+
+            sendVerificationEmail(email, code)
+              .then(() => {
+                window.location.href = "verify.php";
+              })
+              .catch((err) => {
+                console.error("Email send failed:", err);
+                alert("Failed to send verification email. Please try again.");
+                window.location.href = "verify.php";
+              });
+          });
+        </script>
+    </head>
+    <body>
+        <p>Sending verification code to <strong><?php echo htmlspecialchars($_SESSION['pending_email']); ?></strong>...</p>
+    </body>
+    </html>
+    <?php
+    exit();
 }
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>

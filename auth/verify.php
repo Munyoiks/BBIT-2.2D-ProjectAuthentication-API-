@@ -1,131 +1,164 @@
 <?php
 session_start();
 
-// Ensure verification session data exists
-if (!isset($_SESSION['pending_email']) || !isset($_SESSION['verification_code'])) {
-    die("Session expired. Please register again. <a href='register.php'>Register</a>");
+if (!isset($_SESSION['pending_email'])) {
+    header("Location: register.php");
+    exit();
 }
 
 $email = $_SESSION['pending_email'];
-$code = $_SESSION['verification_code'];
+$code = $_SESSION['verification_code'] ?? null;
 
-// Handle form submission
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $entered = trim($_POST['code']);
-
-    if ($entered == $code) {
-        // Verified successfully — update DB
-        require_once "db_config.php";
-        $stmt = $conn->prepare("UPDATE users SET verified = 1 WHERE email = ?");
-        $stmt->bind_param("s", $email);
-        $stmt->execute();
-        $stmt->close();
-
-        // Clear verification session
-        unset($_SESSION['verification_code']);
-        unset($_SESSION['pending_email']);
-
-        // Redirect to dashboard
-        header("Location: dashboard.php");
-        exit();
-    } else {
-        $error = "❌ Incorrect code. Please try again.";
-    }
+// Handle "Resend" request
+if (isset($_GET['resend'])) {
+    $code = rand(100000, 999999);
+    $_SESSION['verification_code'] = $code;
+    $resending = true;
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Email Verification | Mojo Tenant System</title>
+  <title>Verify Email | Mojo Tenant System</title>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-  <script>
-    (function(){
-      emailjs.init({ publicKey: "T38uilUqfOVLAnbQE" }); // Your EmailJS Public Key
-    })();
+  <script src="emailConfig.js"></script>
 
-    window.addEventListener("DOMContentLoaded", () => {
-      // Automatically send the code when user lands here
-      emailjs.send("service_hit0nhj", "template_lyjg5vx", {
-        to_email: "<?php echo $email; ?>",
-        verification_code: "<?php echo $code; ?>"
-      }).then(() => {
-        console.log("✅ Verification code sent to <?php echo $email; ?>");
-      }).catch(err => {
-        console.error("❌ Failed to send email:", err);
-        alert("We couldnt send the code. Try refreshing the page.");
-      });
-    });
-  </script>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #eef2f3;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(135deg, #007bff, #00d4ff);
       height: 100vh;
       margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
+
     .verify-container {
-      background: #fff;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      background: white;
+      padding: 35px 30px;
+      border-radius: 14px;
       width: 90%;
       max-width: 400px;
       text-align: center;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+      animation: fadeIn 0.8s ease;
     }
+
     h2 {
       color: #007bff;
       margin-bottom: 10px;
+      font-size: 1.6rem;
     }
+
+    p {
+      color: #555;
+      font-size: 15px;
+      margin-bottom: 20px;
+    }
+
     input {
       width: 100%;
       padding: 12px;
-      margin: 10px 0;
+      font-size: 15px;
       border: 1px solid #ccc;
       border-radius: 8px;
+      margin-bottom: 15px;
+      transition: border 0.2s;
     }
+
+    input:focus {
+      border-color: #007bff;
+      outline: none;
+    }
+
     button {
       width: 100%;
       padding: 12px;
-      background: #007bff;
-      color: white;
       border: none;
       border-radius: 8px;
+      font-size: 15px;
       cursor: pointer;
-      font-size: 16px;
+      transition: 0.3s;
     }
-    button:hover {
+
+    button[type="submit"] {
+      background: #007bff;
+      color: white;
+    }
+
+    button[type="submit"]:hover {
       background: #0056b3;
     }
+
+    #resend-btn {
+      background: #f5f5f5;
+      color: #007bff;
+      margin-top: 10px;
+      border: 1px solid #007bff;
+    }
+
+    #resend-btn:hover {
+      background: #007bff;
+      color: white;
+    }
+
+    .note {
+      font-size: 13px;
+      color: #777;
+      margin-top: 10px;
+    }
+
     .error {
       color: red;
-      margin-top: 10px;
       font-weight: bold;
+      margin-top: 10px;
     }
-    .note {
-      font-size: 14px;
-      color: #555;
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
   <div class="verify-container">
     <h2>Email Verification</h2>
-    <p>A 6-digit code has been sent to <strong><?php echo htmlspecialchars($email); ?></strong></p>
+    <p>A 6-digit code has been sent to <strong><?php echo htmlspecialchars($email); ?></strong>.</p>
 
-    <?php if (isset($error)): ?>
-      <p class="error"><?php echo $error; ?></p>
-    <?php endif; ?>
+    <?php
+    if (isset($_SESSION['error'])) {
+        echo "<p class='error'>{$_SESSION['error']}</p>";
+        unset($_SESSION['error']);
+    }
+    ?>
 
-    <form method="POST">
-      <input type="text" name="code" placeholder="Enter 6-digit code" maxlength="6" required>
-      <button type="submit">Verify</button>
+    <form method="POST" action="verify_code.php">
+        <input type="text" name="code" placeholder="Enter 6-digit code" required maxlength="6">
+        <button type="submit">Verify</button>
     </form>
 
-    <p class="note">Didnt get the code? Refresh this page to resend it.</p>
+    <button id="resend-btn" onclick="resendCode()">Resend Code</button>
+    <p class="note">Didn’t receive it? Check your spam folder or click “Resend Code”.</p>
   </div>
+
+  <script>
+    const resending = <?php echo isset($resending) ? 'true' : 'false'; ?>;
+    const email = "<?php echo $email; ?>";
+    const code = "<?php echo $code; ?>";
+
+    // Auto-send if "resend" was clicked
+    if (resending) {
+      sendVerificationEmail(email, code)
+        .then(() => alert("A new verification code has been sent to " + email))
+        .catch(() => alert("Failed to resend verification email. Please try again."));
+    }
+
+    // Button action
+    function resendCode() {
+      window.location.href = "verify.php?resend=1";
+    }
+  </script>
 </body>
 </html>
