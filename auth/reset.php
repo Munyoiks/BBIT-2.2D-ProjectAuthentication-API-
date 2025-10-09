@@ -2,7 +2,7 @@
 session_start();
 
 // DB connection
-$conn = new mysqli("localhost", "mojo_user", "StrongPass123!", "mojo_db");
+$conn = new mysqli("localhost", "root", "munyoiks7", "auth_db");
 if ($conn->connect_error) {
     die("DB Connection failed: " . $conn->connect_error);
 }
