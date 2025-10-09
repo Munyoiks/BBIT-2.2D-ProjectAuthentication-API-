@@ -2,5 +2,5 @@
 session_start();
 session_unset();
 session_destroy();
-header("Location: authentication.php");
+header("Location: ../auth/index.php");
 exit();

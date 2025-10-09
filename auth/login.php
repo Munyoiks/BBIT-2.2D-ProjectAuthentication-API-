@@ -17,14 +17,16 @@ if (isset($_POST['login'])) {
         if ($user = $result->fetch_assoc()) {
             if (password_verify($password, $user['password'])) {
                 if ($user['is_verified'] == 1) {
-                    // Verified user → go to dashboard
+                    // ✅ Verified user → go to dashboard
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['full_name'] = $user['full_name'];
                     $_SESSION['email'] = $user['email'];
-                    header("Location: dashboard.php");
+
+                    // ✅ Correct redirect path (out of /auth → into /dashboard)
+                    header("Location: ../dashboard/dashboard.php");
                     exit();
                 } else {
-                    $error = "Your account is not verified. Please check your email for the verification link.";
+                    $error = "Your account is not verified. Please check your email for the verification code.";
                 }
             } else {
                 $error = "Incorrect password.";
