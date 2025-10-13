@@ -1,4 +1,5 @@
 (function() {
+  // Initialize EmailJS
   emailjs.init({ publicKey: "T38uilUqfOVLAnbQE" });
 })();
 
@@ -11,8 +12,8 @@ const EMAILJS_CONFIG = {
 // ✅ Send verification (OTP) email
 function sendVerificationEmail(email, code) {
   return emailjs.send(EMAILJS_CONFIG.SERVICE_ID, EMAILJS_CONFIG.TEMPLATE_VERIFY, {
-    email: email,        // ✅ matches {{email}} in your EmailJS template
-    passcode: code,      // ✅ ensure EmailJS template uses {{passcode}} variable
+    email: email,        // Matches {{email}} in EmailJS template
+    passcode: code,      // Matches {{passcode}} in template
   })
   .then(() => {
     console.log("Verification code sent to", email);
@@ -25,11 +26,11 @@ function sendVerificationEmail(email, code) {
   });
 }
 
-// ✅ Send password reset email
+// ✅ Send password reset email (for forgot password)
 function sendResetEmail(email, link) {
   return emailjs.send(EMAILJS_CONFIG.SERVICE_ID, EMAILJS_CONFIG.TEMPLATE_RESET, {
-    email: email,   // ✅ must match {{email}} in EmailJS template
-    link: link,     // ✅ must match {{link}} in EmailJS template
+    email: email,   // Matches {{email}} in EmailJS template
+    link: link,     // Matches {{link}} in EmailJS template
   })
   .then(() => {
     console.log("Reset email sent to", email);
@@ -39,4 +40,17 @@ function sendResetEmail(email, link) {
     console.error("EmailJS Reset Error:", err);
     alert("Failed to send password reset email. Please try again later.");
   });
+}
+
+// Automatically send reset email after token generation
+function triggerPasswordReset(email, token) {
+  const resetLink = `http://localhost/BBIT-2.2D-ProjectAuthentication-API-/reset_password.php?token=${token}&email=${encodeURIComponent(email)}`;
+  
+  sendResetEmail(email, resetLink)
+    .then(() => {
+      console.log("Password reset process started for:", email);
+    })
+    .catch((error) => {
+      console.error("Failed to start password reset process:", error);
+    });
 }

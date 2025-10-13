@@ -2,7 +2,7 @@
 session_start();
 require_once "db_config.php";
 
-// ✅ Ensure verification session data exists
+// Ensure verification session data exists
 if (!isset($_SESSION['pending_email']) || !isset($_SESSION['verification_code'])) {
     die("Session expired. Please register again. <a href='register.php'>Register</a>");
 }
@@ -10,22 +10,22 @@ if (!isset($_SESSION['pending_email']) || !isset($_SESSION['verification_code'])
 $email = $_SESSION['pending_email'];
 $code = $_SESSION['verification_code'];
 
-// ✅ Handle form submission
+// Handle form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $entered = trim($_POST['code']);
 
     if ($entered == $code) {
-        // ✅ Code matches — verify user in DB
+        //  Code matches — verify user in DB
         $stmt = $conn->prepare("UPDATE users SET is_verified = 1 WHERE email = ?");
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $stmt->close();
 
-        // ✅ Clear temporary session vars
+        //  Clear temporary session vars
         unset($_SESSION['verification_code']);
         unset($_SESSION['pending_email']);
 
-        // ✅ Automatically log user in
+        // Automatically log user in
         $_SESSION['user_email'] = $email;
         ?>
         <!DOCTYPE html>
@@ -68,12 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </head>
         <body>
             <div class="success-container">
-                <h2>✅ Email Verified Successfully!</h2>
+                <h2> Email Verified Successfully!</h2>
                 <p>Redirecting you to your dashboard...</p>
             </div>
 
             <script>
-                // ✅ Redirect to the correct dashboard location
+                //  Redirect to the correct dashboard location
                 setTimeout(() => {
                     window.location.href = "http://localhost/BBIT-2.2D-ProjectAuthentication-API-/dashboard/dashboard.php";
                 }, 2500);
