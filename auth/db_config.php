@@ -3,8 +3,8 @@
 
 $host = "localhost";
 $user = "root";
-$pass = "munyoiks7";  // your secure password
-$dbname = "auth_db";  // your database name
+$pass = "munyoiks7";  
+$dbname = "auth_db";  
 
 $conn = new mysqli($host, $user, $pass, $dbname);
 
