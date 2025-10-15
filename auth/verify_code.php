@@ -83,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php
         exit();
     } else {
-        // ❌ Incorrect code
+        // Incorrect code
         $_SESSION['error'] = "Incorrect code. Please try again.";
         header("Location: verify.php");
         exit();
