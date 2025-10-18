@@ -5,7 +5,7 @@ session_start();
 $host = "localhost";
 $user = "root";
 $pass = "munyoiks7";
-$db   = "auth_db"; // change to your actual DB name
+$db   = "auth_db"; 
 
 $conn = new mysqli($host, $user, $pass, $db);
 if ($conn->connect_error) {
