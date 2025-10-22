@@ -41,6 +41,10 @@ CREATE TABLE IF NOT EXISTS users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ";
 
+// Add this after table creation to reset any problematic token data
+$conn->query("UPDATE users SET reset_token = NULL, verification_code = NULL, token_expiry = NULL WHERE reset_token = '' OR verification_code = ''");
+echo "Reset empty token fields to NULL<br>";
+
 if ($conn->query($sql) === TRUE) {
     echo "Table 'users' created or already exists.<br>";
 } else {
