@@ -1,5 +1,5 @@
 <?php
-// database_setup.php
+// database_migration.php
 
 $servername = "localhost";
 $username = "root";
@@ -9,21 +9,21 @@ $dbname = "auth_db";
 // 1️ Connect to MySQL
 $conn = new mysqli($servername, $username, $password);
 if ($conn->connect_error) {
-    die(" Connection failed: " . $conn->connect_error);
+    die("Connection failed: " . $conn->connect_error);
 }
 
 // Create database if not exists
 $sql = "CREATE DATABASE IF NOT EXISTS $dbname";
 if ($conn->query($sql) === TRUE) {
-    echo " Database '$dbname' created or already exists.<br>";
+    echo "Database '$dbname' created or already exists.<br>";
 } else {
-    die(" Error creating database: " . $conn->error);
+    die("Error creating database: " . $conn->error);
 }
 
-//  Select the database
+// Select the database
 $conn->select_db($dbname);
 
-//  Create `users` table with your exact structure
+// Create `users` table with your exact structure
 $sql = "
 CREATE TABLE IF NOT EXISTS users (
     id INT(11) AUTO_INCREMENT PRIMARY KEY,
@@ -42,26 +42,67 @@ CREATE TABLE IF NOT EXISTS users (
 ";
 
 if ($conn->query($sql) === TRUE) {
-    echo " Table 'users' created or already exists.<br>";
+    echo "Table 'users' created or already exists.<br>";
 } else {
-    echo " Error creating table: " . $conn->error . "<br>";
+    echo "Error creating table: " . $conn->error . "<br>";
 }
 
-//  Add a sample verified user (only if not already present)
+// Check if we need to alter the table structure (for existing tables)
+$result = $conn->query("DESCRIBE users");
+$existingColumns = [];
+while ($row = $result->fetch_assoc()) {
+    $existingColumns[$row['Field']] = true;
+}
+
+// Add missing columns if they don't exist
+if (!isset($existingColumns['token_expiry'])) {
+    $conn->query("ALTER TABLE users ADD COLUMN token_expiry DATETIME DEFAULT NULL");
+    echo "Added missing column: token_expiry<br>";
+}
+
+if (!isset($existingColumns['reset_attempts'])) {
+    $conn->query("ALTER TABLE users ADD COLUMN reset_attempts INT(11) DEFAULT 0");
+    echo "Added missing column: reset_attempts<br>";
+}
+
+if (!isset($existingColumns['last_reset_at'])) {
+    $conn->query("ALTER TABLE users ADD COLUMN last_reset_at DATETIME DEFAULT NULL");
+    echo "Added missing column: last_reset_at<br>";
+}
+
+// Add a sample verified user (using prepared statements to prevent SQL injection)
 $sampleEmail = "tenant@example.com";
 $samplePassword = password_hash("password123", PASSWORD_DEFAULT);
-$checkUser = $conn->query("SELECT * FROM users WHERE email='$sampleEmail'");
 
-if ($checkUser->num_rows === 0) {
-    $conn->query("
-        INSERT INTO users (full_name, email, phone, password, is_verified)
-        VALUES ('Sample Tenant', '$sampleEmail', '0712345678', '$samplePassword', 1)
+// Check if user exists using prepared statement
+$checkStmt = $conn->prepare("SELECT id FROM users WHERE email = ?");
+$checkStmt->bind_param("s", $sampleEmail);
+$checkStmt->execute();
+$checkStmt->store_result();
+
+if ($checkStmt->num_rows === 0) {
+    // Insert sample user using prepared statement
+    $insertStmt = $conn->prepare("
+        INSERT INTO users (full_name, email, phone, password, is_verified, verification_code, reset_token, reset_expiry, reset_attempts, last_reset_at, token_expiry)
+        VALUES (?, ?, ?, ?, 1, NULL, NULL, NULL, 0, NULL, NULL)
     ");
-    echo " Sample user added (email: tenant@example.com / password: password123)<br>";
+    $fullName = "Sample Tenant";
+    $phone = "0712345678";
+    
+    $insertStmt->bind_param("ssss", $fullName, $sampleEmail, $phone, $samplePassword);
+    
+    if ($insertStmt->execute()) {
+        echo "Sample user added (email: tenant@example.com / password: password123)<br>";
+    } else {
+        echo "Error adding sample user: " . $insertStmt->error . "<br>";
+    }
+    $insertStmt->close();
 } else {
-    echo " Sample user already exists.<br>";
+    echo "Sample user already exists.<br>";
 }
 
-echo "<br> Database setup complete!";
+$checkStmt->close();
+
+echo "<br>Database migration complete!";
 $conn->close();
 ?>
