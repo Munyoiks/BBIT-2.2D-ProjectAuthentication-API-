@@ -4,7 +4,7 @@
 $host = 'localhost';
 $db   = 'auth_db';
 $user = 'root';
-$pass = ''; 
+$pass = '1234'; 
 $charset = 'utf8mb4';
 
 // Set up DSN and options
