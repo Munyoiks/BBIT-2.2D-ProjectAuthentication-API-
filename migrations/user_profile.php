@@ -4,7 +4,7 @@
 $host = 'localhost';
 $db   = 'auth_db';
 $user = 'root';
-$pass = '1234'; // <--
+$pass = ''; // <--
 //  Change this to your actual password
 $charset = 'utf8mb4';
 
