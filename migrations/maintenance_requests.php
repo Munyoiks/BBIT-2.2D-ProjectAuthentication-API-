@@ -1,6 +1,7 @@
 <?php
 // maintenance_requests_migration.php
 
+
 $servername = "localhost";
 $username = "root";
 $password = "";
@@ -23,22 +24,15 @@ if ($conn->query($sql) === TRUE) {
 // Select the database
 $conn->select_db($dbname);
 
-// Create `maintenance_requests` table with the exact structure
+// Create maintenance_requests table with the exact structure
 $sql = "
 CREATE TABLE IF NOT EXISTS maintenance_requests (
-    id INT(11) AUTO_INCREMENT PRIMARY KEY,
-    user_id INT(11) NOT NULL,
-    title VARCHAR(255) NOT NULL,
-    description TEXT NOT NULL,
-    urgency ENUM('low','medium','high') DEFAULT 'medium',
-    status ENUM('pending','in_progress','completed') DEFAULT 'pending',
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tenant_id INT,
+    issue TEXT,
+    status ENUM('Pending', 'Resolved') DEFAULT 'Pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    INDEX idx_user_id (user_id),
-    INDEX idx_status (status),
-    INDEX idx_urgency (urgency),
-    INDEX idx_created_at (created_at)
+    FOREIGN KEY (tenant_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ";
 
@@ -57,19 +51,24 @@ if ($result) {
     }
 
     // Add missing columns if they don't exist
-    if (!isset($existingColumns['urgency'])) {
-        $conn->query("ALTER TABLE maintenance_requests ADD COLUMN urgency ENUM('low','medium','high') DEFAULT 'medium'");
-        echo "Added missing column: urgency<br>";
+    if (!isset($existingColumns['tenant_id'])) {
+        $conn->query("ALTER TABLE maintenance_requests ADD COLUMN tenant_id INT");
+        echo "Added missing column: tenant_id<br>";
+    }
+
+    if (!isset($existingColumns['issue'])) {
+        $conn->query("ALTER TABLE maintenance_requests ADD COLUMN issue TEXT");
+        echo "Added missing column: issue<br>";
     }
 
     if (!isset($existingColumns['status'])) {
-        $conn->query("ALTER TABLE maintenance_requests ADD COLUMN status ENUM('pending','in_progress','completed') DEFAULT 'pending'");
+        $conn->query("ALTER TABLE maintenance_requests ADD COLUMN status ENUM('Pending', 'Resolved') DEFAULT 'Pending'");
         echo "Added missing column: status<br>";
     }
 
-    if (!isset($existingColumns['updated_at'])) {
-        $conn->query("ALTER TABLE maintenance_requests ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
-        echo "Added missing column: updated_at<br>";
+    if (!isset($existingColumns['created_at'])) {
+        $conn->query("ALTER TABLE maintenance_requests ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+        echo "Added missing column: created_at<br>";
     }
 
     // Add foreign key constraint if it doesn't exist
@@ -82,86 +81,92 @@ if ($result) {
     ");
     
     if ($fkCheck && $fkCheck->fetch_assoc()['fk_exists'] == 0) {
-        $conn->query("ALTER TABLE maintenance_requests ADD FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE");
-        echo "Added foreign key constraint: user_id -> users(id)<br>";
-    }
-
-    // Add indexes if they don't exist
-    $indexes = [
-        'idx_user_id' => 'user_id',
-        'idx_status' => 'status',
-        'idx_urgency' => 'urgency',
-        'idx_created_at' => 'created_at'
-    ];
-
-    foreach ($indexes as $indexName => $column) {
-        $indexCheck = $conn->query("SHOW INDEX FROM maintenance_requests WHERE Key_name = '$indexName'");
-        if ($indexCheck->num_rows == 0) {
-            $conn->query("CREATE INDEX $indexName ON maintenance_requests ($column)");
-            echo "Added index: $indexName<br>";
-        }
+        $conn->query("ALTER TABLE maintenance_requests ADD FOREIGN KEY (tenant_id) REFERENCES users(id) ON DELETE CASCADE");
+        echo "Added foreign key constraint: tenant_id -> users(id)<br>";
     }
 } else {
     echo "Error describing maintenance_requests table: " . $conn->error . "<br>";
 }
 
-// Add sample maintenance requests for testing (only if none exist)
+// Add sample maintenance request data for testing (only if no requests exist)
 $checkRequests = $conn->query("SELECT COUNT(*) as count FROM maintenance_requests");
 if ($checkRequests) {
     $requestCount = $checkRequests->fetch_assoc()['count'];
     
     if ($requestCount == 0) {
-        // Get a sample user to associate with maintenance requests
-        $sampleUser = $conn->query("SELECT id FROM users WHERE email = 'tenant@example.com' LIMIT 1");
+        // Get sample users to associate with maintenance requests
+        $sampleUsers = $conn->query("SELECT id, name FROM users WHERE role = 'tenant' LIMIT 5");
+        $users = [];
         
-        if ($sampleUser && $sampleUser->num_rows > 0) {
-            $user = $sampleUser->fetch_assoc();
-            $user_id = $user['id'];
+        if ($sampleUsers && $sampleUsers->num_rows > 0) {
+            while ($user = $sampleUsers->fetch_assoc()) {
+                $users[] = $user;
+            }
             
             // Insert sample maintenance requests
             $sampleRequests = [
                 [
-                    'user_id' => $user_id,
-                    'title' => 'Leaking Kitchen Faucet',
-                    'description' => 'The kitchen faucet has been leaking constantly for the past 2 days. It drips about once every second, even when fully turned off.',
-                    'urgency' => 'medium',
-                    'status' => 'pending'
+                    'tenant_id' => $users[0]['id'],
+                    'issue' => 'Kitchen sink is leaking and water is pooling under the cabinet. The dripping has been constant for 2 days now.',
+                    'status' => 'Pending'
                 ],
                 [
-                    'user_id' => $user_id,
-                    'title' => 'Broken Air Conditioner',
-                    'description' => 'The AC unit in the living room is not cooling properly. It makes strange noises when turned on and only blows warm air.',
-                    'urgency' => 'high',
-                    'status' => 'in_progress'
+                    'tenant_id' => $users[1]['id'],
+                    'issue' => 'Air conditioning unit not cooling properly. The temperature stays at 78°F even when set to 68°F.',
+                    'status' => 'Resolved'
                 ],
                 [
-                    'user_id' => $user_id,
-                    'title' => 'Stuck Bedroom Window',
-                    'description' => 'The bedroom window is stuck and cannot be opened. It seems to be jammed in the frame.',
-                    'urgency' => 'low',
-                    'status' => 'completed'
+                    'tenant_id' => $users[2]['id'],
+                    'issue' => 'Bathroom toilet keeps running after flushing. Have to jiggle the handle to make it stop.',
+                    'status' => 'Pending'
                 ],
                 [
-                    'user_id' => $user_id,
-                    'title' => 'Electrical Outlet Not Working',
-                    'description' => 'The electrical outlet near the kitchen counter stopped working yesterday. No power in any of the two sockets.',
-                    'urgency' => 'high',
-                    'status' => 'pending'
+                    'tenant_id' => $users[0]['id'],
+                    'issue' => 'Bedroom window won\'t close properly. There\'s a draft coming in and security concern.',
+                    'status' => 'Pending'
+                ],
+                [
+                    'tenant_id' => $users[3]['id'],
+                    'issue' => 'Electrical outlet in living room sparks when plugging in devices. Concerned about fire hazard.',
+                    'status' => 'Resolved'
+                ],
+                [
+                    'tenant_id' => $users[4]['id'],
+                    'issue' => 'Garbage disposal making loud grinding noise and not working. Smell coming from sink drain.',
+                    'status' => 'Pending'
+                ],
+                [
+                    'tenant_id' => $users[1]['id'],
+                    'issue' => 'Balcony door difficult to open and close. Seems to be misaligned with the frame.',
+                    'status' => 'Resolved'
+                ],
+                [
+                    'tenant_id' => $users[2]['id'],
+                    'issue' => 'Water pressure in shower very weak. Takes much longer to rinse shampoo from hair.',
+                    'status' => 'Pending'
+                ],
+                [
+                    'tenant_id' => $users[3]['id'],
+                    'issue' => 'Carpet in hallway has loose area that poses tripping hazard. Needs to be re-stretched or replaced.',
+                    'status' => 'Pending'
+                ],
+                [
+                    'tenant_id' => $users[4]['id'],
+                    'issue' => 'Smoke detector in hallway beeps every 30 seconds. Probably needs battery replacement.',
+                    'status' => 'Resolved'
                 ]
             ];
             
             $insertCount = 0;
             foreach ($sampleRequests as $request) {
                 $stmt = $conn->prepare("
-                    INSERT INTO maintenance_requests (user_id, title, description, urgency, status)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO maintenance_requests (tenant_id, issue, status)
+                    VALUES (?, ?, ?)
                 ");
                 $stmt->bind_param(
-                    "issss", 
-                    $request['user_id'],
-                    $request['title'],
-                    $request['description'],
-                    $request['urgency'],
+                    "iss", 
+                    $request['tenant_id'],
+                    $request['issue'],
                     $request['status']
                 );
                 
@@ -173,36 +178,75 @@ if ($checkRequests) {
             
             echo "Added $insertCount sample maintenance request records.<br>";
         } else {
-            echo "No sample user found. Please run users migration first.<br>";
+            echo "No tenant users found. Please run users migration first or create tenant accounts.<br>";
         }
     } else {
         echo "Maintenance requests already exist in the database ($requestCount records).<br>";
     }
 }
 
-// Display sample data for verification
-echo "<br><strong>Sample Maintenance Requests:</strong><br>";
-$sampleData = $conn->query("
-    SELECT mr.id, u.email, mr.title, mr.urgency, mr.status, mr.created_at 
+// Display current maintenance requests for verification
+echo "<br>Current maintenance requests in database:<br>";
+$requestsResult = $conn->query("
+    SELECT mr.id, u.name as tenant_name, mr.issue, mr.status, mr.created_at 
     FROM maintenance_requests mr 
-    JOIN users u ON mr.user_id = u.id 
-    LIMIT 5
+    LEFT JOIN users u ON mr.tenant_id = u.id 
+    ORDER BY mr.created_at DESC
 ");
 
-if ($sampleData && $sampleData->num_rows > 0) {
-    echo "<table border='1' cellpadding='5' style='border-collapse: collapse;'>";
-    echo "<tr><th>ID</th><th>User</th><th>Title</th><th>Urgency</th><th>Status</th><th>Created</th></tr>";
-    while ($row = $sampleData->fetch_assoc()) {
-        echo "<tr>";
-        echo "<td>" . $row['id'] . "</td>";
-        echo "<td>" . htmlspecialchars($row['email']) . "</td>";
-        echo "<td>" . htmlspecialchars($row['title']) . "</td>";
-        echo "<td>" . $row['urgency'] . "</td>";
-        echo "<td>" . $row['status'] . "</td>";
-        echo "<td>" . $row['created_at'] . "</td>";
-        echo "</tr>";
+if ($requestsResult && $requestsResult->num_rows > 0) {
+    echo "<div style='margin: 20px 0;'>";
+    while ($request = $requestsResult->fetch_assoc()) {
+        $statusColor = $request['status'] === 'Resolved' ? '#4CAF50' : '#FF9800';
+        $backgroundColor = $request['status'] === 'Resolved' ? '#f0f8f0' : '#fff8f0';
+        
+        echo "<div style='border: 2px solid $statusColor; padding: 15px; margin: 10px 0; border-radius: 8px; background-color: $backgroundColor;'>";
+        echo "<div style='display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;'>";
+        echo "<div>";
+        echo "<h3 style='margin: 0 0 5px 0; color: #333;'>Request #{$request['id']}</h3>";
+        echo "<p style='margin: 0; color: #666;'><strong>Tenant:</strong> {$request['tenant_name']}</p>";
+        echo "</div>";
+        echo "<span style='background-color: $statusColor; color: white; padding: 6px 12px; border-radius: 15px; font-weight: bold;'>";
+        echo $request['status'];
+        echo "</span>";
+        echo "</div>";
+        echo "<p style='margin: 10px 0; color: #555; line-height: 1.5; background-color: white; padding: 10px; border-radius: 4px;'>";
+        echo nl2br(htmlspecialchars($request['issue']));
+        echo "</p>";
+        echo "<small style='color: #999;'>Submitted: " . date('F j, Y g:i A', strtotime($request['created_at'])) . "</small>";
+        echo "</div>";
     }
-    echo "</table>";
+    echo "</div>";
+} else {
+    echo "No maintenance requests found in database.<br>";
+}
+
+// Show statistics
+$statsResult = $conn->query("
+    SELECT 
+        COUNT(*) as total,
+        SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending_count,
+        SUM(CASE WHEN status = 'Resolved' THEN 1 ELSE 0 END) as resolved_count,
+        MIN(created_at) as oldest,
+        MAX(created_at) as newest
+    FROM maintenance_requests
+");
+
+if ($statsResult && $statsRow = $statsResult->fetch_assoc()) {
+    $resolvedPercentage = $statsRow['total'] > 0 ? round(($statsRow['resolved_count'] / $statsRow['total']) * 100) : 0;
+    
+    echo "<br>Maintenance Requests Statistics:<br>";
+    echo "- Total Requests: {$statsRow['total']}<br>";
+    echo "- Pending: {$statsRow['pending_count']}<br>";
+    echo "- Resolved: {$statsRow['resolved_count']}<br>";
+    echo "- Resolution Rate: {$resolvedPercentage}%<br>";
+    
+    if ($statsRow['oldest']) {
+        echo "- Oldest Request: " . date('F j, Y', strtotime($statsRow['oldest'])) . "<br>";
+    }
+    if ($statsRow['newest']) {
+        echo "- Newest Request: " . date('F j, Y', strtotime($statsRow['newest'])) . "<br>";
+    }
 }
 
 echo "<br>Maintenance requests migration complete!";
