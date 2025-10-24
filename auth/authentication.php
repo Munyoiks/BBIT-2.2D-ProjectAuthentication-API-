@@ -4,7 +4,7 @@ session_start();
 // ---- DATABASE CONNECTION ----
 $host = "localhost";
 $user = "root";
-$pass = "munyoiks7";
+$pass = "1234";
 $db   = "auth_db"; 
 
 $conn = new mysqli($host, $user, $pass, $db);
