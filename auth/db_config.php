@@ -1,5 +1,5 @@
 <?php
-// 🌐 Universal Database Configuration using Environment Variables
+// Universal Database Configuration using Environment Variables
 
 // Load environment variables if available (optional for local .env file)
 if (file_exists(__DIR__ . '/.env')) {
@@ -15,10 +15,10 @@ if (file_exists(__DIR__ . '/.env')) {
 $host = getenv('DB_HOST') ?: 'localhost';
 $dbname = getenv('DB_NAME') ?: 'auth_db';
 $user = getenv('DB_USER') ?: 'root';
-$pass = getenv('DB_PASS') ?: '';
+$pass = getenv('DB_PASS') ?: 'munyoiks7';
 
-// Create connection
-$conn = new mysqli($host, $user, $pass);
+// Create connection **and select database**
+$conn = new mysqli($host, $user, $pass, $dbname);
 
 // Set charset
 $conn->set_charset("utf8mb4");

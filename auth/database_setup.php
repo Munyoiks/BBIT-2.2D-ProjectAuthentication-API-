@@ -7,8 +7,7 @@ if (!$conn->query($sql)) {
     error_log("Error creating database '$dbname': " . $conn->error);
 }
 
-// Select the database
-$conn->select_db($dbname);
+// Database is already selected via db_config.php, so no need for $conn->select_db($dbname);
 
 // Create users table
 $sql = "
