@@ -174,6 +174,13 @@ try {
 
         .stat-card {
             border-left: 4px solid var(--primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
         }
 
         .stat-card.warning {
@@ -257,6 +264,38 @@ try {
         .sidebar-nav a {
             min-height: 44px;
         }
+        
+        /* Interactive card styling */
+        .interactive-card {
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .interactive-card::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.03);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .interactive-card:hover::after {
+            opacity: 1;
+        }
+        
+        .card-link {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        
+        .card-link:hover {
+            color: inherit;
+        }
     </style>
 </head>
 <body>
@@ -322,48 +361,54 @@ try {
 
     <div class="row">
         <div class="col-md-4">
-            <div class="card stat-card">
-                <div class="card-body">
-                    <div class="stat-icon">
-                        <i class="fas fa-calendar-day"></i>
+            <a href="rent.php" class="card-link">
+                <div class="card stat-card interactive-card">
+                    <div class="card-body">
+                        <div class="stat-icon">
+                            <i class="fas fa-calendar-day"></i>
+                        </div>
+                        <h5>Next Rent Due</h5>
+                        <p class="text-muted">October 30, 2025</p>
+                        <div class="progress mb-2" style="height: 6px;">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: 65%" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <small class="text-muted">5 days remaining</small>
                     </div>
-                    <h5>Next Rent Due</h5>
-                    <p class="text-muted">October 30, 2025</p>
-                    <div class="progress mb-2" style="height: 6px;">
-                        <div class="progress-bar bg-primary" role="progressbar" style="width: 65%" aria-valuenow="65" aria-valuemin="0" aria-valuemax="100"></div>
-                    </div>
-                    <small class="text-muted">5 days remaining</small>
                 </div>
-            </div>
+            </a>
         </div>
 
         <div class="col-md-4">
-            <div class="card stat-card warning">
-                <div class="card-body">
-                    <div class="stat-icon">
-                        <i class="fas fa-tools"></i>
-                    </div>
-                    <h5>Maintenance Requests</h5>
-                    <p class="text-muted">2 active issues</p>
-                    <div class="d-flex justify-content-between">
-                        <span class="badge bg-warning">1 pending</span>
-                        <span class="badge bg-info">1 in progress</span>
+            <a href="maintenance.php" class="card-link">
+                <div class="card stat-card warning interactive-card">
+                    <div class="card-body">
+                        <div class="stat-icon">
+                            <i class="fas fa-tools"></i>
+                        </div>
+                        <h5>Maintenance Requests</h5>
+                        <p class="text-muted">2 active issues</p>
+                        <div class="d-flex justify-content-between">
+                            <span class="badge bg-warning">1 pending</span>
+                            <span class="badge bg-info">1 in progress</span>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </a>
         </div>
 
         <div class="col-md-4">
-            <div class="card stat-card danger">
-                <div class="card-body">
-                    <div class="stat-icon">
-                        <i class="fas fa-envelope"></i>
+            <a href="messages.php" class="card-link">
+                <div class="card stat-card danger interactive-card">
+                    <div class="card-body">
+                        <div class="stat-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <h5>Unread Messages</h5>
+                        <p class="text-muted">1 new message</p>
+                        <span class="btn btn-sm btn-outline-danger">View Messages</span>
                     </div>
-                    <h5>Unread Messages</h5>
-                    <p class="text-muted">1 new message</p>
-                    <button class="btn btn-sm btn-outline-danger">View Messages</button>
                 </div>
-            </div>
+            </a>
         </div>
     </div>
 
@@ -393,15 +438,15 @@ try {
                 <div class="card-body">
                     <h5 class="card-title">Quick Actions</h5>
                     <div class="d-grid gap-2">
-                        <button class="btn btn-primary">
+                        <a href="rent.php" class="btn btn-primary">
                             <i class="fas fa-money-bill-wave me-2"></i> Pay Rent
-                        </button>
-                        <button class="btn btn-outline-primary">
+                        </a>
+                        <a href="maintenance.php" class="btn btn-outline-primary">
                             <i class="fas fa-tools me-2"></i> Request Maintenance
-                        </button>
-                        <button class="btn btn-outline-primary">
+                        </a>
+                        <a href="messages.php" class="btn btn-outline-primary">
                             <i class="fas fa-envelope me-2"></i> Contact Landlord
-                        </button>
+                        </a>
                     </div>
                 </div>
             </div>
