@@ -198,4 +198,104 @@ try {
         }
 
         .sidebar-nav a.logout {
-        
+            color: #ff6b6b;
+            margin-top: auto;
+            margin-bottom: 20px;
+        }
+
+        .content {
+            margin-left: var(--sidebar-width);
+            padding: 30px;
+            min-height: 100vh;
+        }
+
+        .card {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid #eaeaea;
+            padding: 1.25rem;
+        }
+
+        .status-badge {
+            padding: 0.35em 0.65em;
+            font-size: 0.75em;
+            font-weight: 600;
+        }
+
+        .priority-badge {
+            padding: 0.35em 0.65em;
+            font-size: 0.75em;
+            font-weight: 600;
+        }
+
+        .priority-low {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .priority-medium {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .priority-high {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .priority-emergency {
+            background-color: #721c24;
+            color: white;
+        }
+
+        .request-item {
+            border-left: 4px solid var(--primary);
+            transition: all 0.3s ease;
+        }
+
+        .request-item:hover {
+            border-left-color: var(--primary-dark);
+        }
+
+        .request-item.pending {
+            border-left-color: var(--warning);
+        }
+
+        .request-item.in_progress {
+            border-left-color: var(--primary);
+        }
+
+        .request-item.completed {
+            border-left-color: var(--success);
+        }
+
+        .request-item.cancelled {
+            border-left-color: var(--danger);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            
+            .content {
+                margin-left: 0;
+            }
+
+            .sidebar-nav {
+            
