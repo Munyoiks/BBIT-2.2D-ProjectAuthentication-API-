@@ -397,4 +397,107 @@ try {
                 </div>
                 <div class="card-body p-0">
                     <?php if (empty($maintenance_requests)): ?>
-                        <div class="empty-state"> 
+                        <div class="empty-state">
+                            <i class="fas fa-tools"></i>
+                            <h4>No Maintenance Requests</h4>
+                            <p>You haven't submitted any maintenance requests yet.</p>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newRequestModal">
+                                <i class="fas fa-plus me-2"></i>Submit Your First Request
+                            </button>
+                        </div>
+                    <?php else: ?>
+                        <div class="list-group list-group-flush">
+                            <?php foreach ($maintenance_requests as $request): ?>
+                                <div class="list-group-item request-item <?= $request['status'] ?>">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h6 class="mb-0"><?= htmlspecialchars($request['title']) ?></h6>
+                                        <div>
+                                            <span class="badge status-badge 
+                                                <?= $request['status'] == 'pending' ? 'bg-warning' : '' ?>
+                                                <?= $request['status'] == 'in_progress' ? 'bg-primary' : '' ?>
+                                                <?= $request['status'] == 'completed' ? 'bg-success' : '' ?>
+                                                <?= $request['status'] == 'cancelled' ? 'bg-danger' : '' ?>">
+                                                <?= ucfirst(str_replace('_', ' ', $request['status'])) ?>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <p class="text-muted mb-2"><?= htmlspecialchars($request['description']) ?></p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <span class="badge priority-badge priority-<?= $request['priority'] ?> me-2">
+                                                <?= ucfirst($request['priority']) ?> Priority
+                                            </span>
+                                            <span class="text-muted small">
+                                                <i class="fas fa-tag me-1"></i><?= htmlspecialchars($request['category']) ?>
+                                            </span>
+                                        </div>
+                                        <div class="text-muted small">
+                                            <i class="fas fa-clock me-1"></i>
+                                            <?= date('M j, Y g:i A', strtotime($request['created_at'])) ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Maintenance Guidelines</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6><i class="fas fa-exclamation-triangle text-warning me-2"></i>Emergency Issues</h6>
+                        <p class="small text-muted">For emergencies (flooding, gas leaks, electrical hazards), call our emergency line immediately at (555) 123-EMER.</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6><i class="fas fa-clock text-primary me-2"></i>Response Times</h6>
+                        <p class="small text-muted">Emergency: Within 2 hours<br>High Priority: 24 hours<br>Medium Priority: 3-5 days<br>Low Priority: 7-10 days</p>
+                    </div>
+                    <div class="mb-3">
+                        <h6><i class="fas fa-info-circle text-info me-2"></i>What to Include</h6>
+                        <p class="small text-muted">Provide clear descriptions, photos if possible, and best times for access to your unit.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Request Statistics</h5>
+                </div>
+                <div class="card-body">
+                    <?php
+                    $stats = [
+                        'pending' => 0,
+                        'in_progress' => 0,
+                        'completed' => 0,
+                        'cancelled' => 0
+                    ];
+                    
+                    foreach ($maintenance_requests as $request) {
+                        $stats[$request['status']]++;
+                    }
+                    ?>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Pending</span>
+                            <span><?= $stats['pending'] ?></span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-warning" style="width: <?= count($maintenance_requests) > 0 ? ($stats['pending'] / count($maintenance_requests)) * 100 : 0 ?>%"></div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>In Progress</span>
+                            <span><?= $stats['in_progress'] ?></span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-primary" style="width: <?= count($maintenance_requests) > 0 ? ($stats['in_progress'] / count($maintenance_requests)) * 100 : 0 ?>%"></div>
+                        </div>
+                    </div>
+                  
