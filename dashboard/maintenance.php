@@ -9,7 +9,7 @@ if (!isset($_SESSION['user_id'])) {
 $host = 'localhost';
 $dbname = 'auth_db';
 $username = 'root';
-$password = 'munyoiks7';
+$password = '';
 
 $success_message = '';
 $error_message = '';
@@ -18,20 +18,23 @@ try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     
-    // Fetch user data
+    // Fetch user data including unit number
     $user_id = $_SESSION['user_id'];
-    $stmt = $pdo->prepare("SELECT full_name, email FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT full_name, email, unit_number FROM users WHERE id = ?");
     $stmt->execute([$user_id]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if ($user) {
         $full_name = $user['full_name'];
         $email = $user['email'];
+        $unit_number = $user['unit_number'] ?? 'Not specified';
         $_SESSION['full_name'] = $full_name;
         $_SESSION['email'] = $email;
+        $_SESSION['unit_number'] = $unit_number;
     } else {
         $full_name = $_SESSION['full_name'] ?? 'Tenant';
         $email = $_SESSION['email'] ?? '';
+        $unit_number = $_SESSION['unit_number'] ?? 'Not specified';
     }
 
     // Handle form submission
@@ -46,560 +49,123 @@ try {
             if (empty($title) || empty($description)) {
                 $error_message = "Please fill in all required fields.";
             } else {
-                // Insert maintenance request
-                $stmt = $pdo->prepare("INSERT INTO maintenance_requests (user_id, title, description, priority, category, status) VALUES (?, ?, ?, ?, ?, 'pending')");
-                $stmt->execute([$user_id, $title, $description, $priority, $category]);
+                // Insert maintenance request using existing table structure
+                $combined_issue = "Category: $category | Priority: " . ucfirst($priority) . " | Title: $title | Description: $description";
                 
-                $success_message = "Maintenance request submitted successfully!";
+                $stmt = $pdo->prepare("INSERT INTO maintenance_requests (tenant_id, issue, status, unit_number, tenant_name) VALUES (?, ?, 'Pending', ?, ?)");
+                $stmt->execute([$user_id, $combined_issue, $unit_number, $full_name]);
+                
+                // Send notification to admin
+                sendAdminNotification($pdo, $user_id, $full_name, $unit_number, $title, $category, $priority, $description);
+                
+                $success_message = "Maintenance request submitted successfully! The admin has been notified.";
             }
-        }
-        
-        // Handle status updates (for demonstration)
-        if (isset($_POST['update_status'])) {
-            $request_id = $_POST['request_id'];
-            $new_status = $_POST['status'];
-            
-            // In a real application, this would be done by admin/landlord
-            $stmt = $pdo->prepare("UPDATE maintenance_requests SET status = ? WHERE id = ? AND user_id = ?");
-            $stmt->execute([$new_status, $request_id, $user_id]);
-            
-            $success_message = "Request status updated successfully!";
         }
     }
 
-    // Fetch maintenance requests
-    $stmt = $pdo->prepare("SELECT * FROM maintenance_requests WHERE user_id = ? ORDER BY created_at DESC");
+    // Fetch maintenance requests using existing table structure
+    $stmt = $pdo->prepare("SELECT * FROM maintenance_requests WHERE tenant_id = ? ORDER BY created_at DESC");
     $stmt->execute([$user_id]);
     $maintenance_requests = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Process the combined issue field to extract components for display
+    foreach ($maintenance_requests as &$request) {
+        $issue_parts = explode(' | ', $request['issue']);
+        $request['category'] = 'Other';
+        $request['priority'] = 'medium';
+        $request['title'] = 'Maintenance Request';
+        $request['description'] = $request['issue']; // Fallback to full issue
+        
+        foreach ($issue_parts as $part) {
+            if (strpos($part, 'Category: ') === 0) {
+                $request['category'] = substr($part, 10);
+            } elseif (strpos($part, 'Priority: ') === 0) {
+                $request['priority'] = strtolower(substr($part, 10));
+            } elseif (strpos($part, 'Title: ') === 0) {
+                $request['title'] = substr($part, 7);
+            } elseif (strpos($part, 'Description: ') === 0) {
+                $request['description'] = substr($part, 13);
+            }
+        }
+    }
+    unset($request); // Break the reference
 
 } catch (PDOException $e) {
     $full_name = $_SESSION['full_name'] ?? 'Tenant';
     $email = $_SESSION['email'] ?? '';
+    $unit_number = $_SESSION['unit_number'] ?? 'Not specified';
     $maintenance_requests = [];
     error_log("Database error: " . $e->getMessage());
     $error_message = "Unable to load maintenance requests. Please try again later.";
 }
 
-// Create maintenance_requests table if it doesn't exist
-try {
-    $create_table_sql = "CREATE TABLE IF NOT EXISTS maintenance_requests (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NOT NULL,
-        title VARCHAR(255) NOT NULL,
-        description TEXT NOT NULL,
-        priority ENUM('low', 'medium', 'high', 'emergency') DEFAULT 'medium',
-        category VARCHAR(100) NOT NULL,
-        status ENUM('pending', 'in_progress', 'completed', 'cancelled') DEFAULT 'pending',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    )";
-    $pdo->exec($create_table_sql);
-} catch (PDOException $e) {
-    error_log("Table creation error: " . $e->getMessage());
+/**
+ * Send notification to admin about new maintenance request
+ */
+function sendAdminNotification($pdo, $tenant_id, $tenant_name, $unit_number, $title, $category, $priority, $description) {
+    try {
+        // Create admin notifications table if it doesn't exist
+        $pdo->exec("CREATE TABLE IF NOT EXISTS admin_notifications (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            tenant_id INT NOT NULL,
+            tenant_name VARCHAR(100) NOT NULL,
+            unit_number VARCHAR(20) NULL,
+            request_title VARCHAR(255) NOT NULL,
+            request_category VARCHAR(100) NOT NULL,
+            request_priority VARCHAR(20) NOT NULL,
+            request_description TEXT NOT NULL,
+            is_read TINYINT(1) DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (tenant_id) REFERENCES users(id) ON DELETE CASCADE
+        )");
+        
+        // Insert notification
+        $stmt = $pdo->prepare("INSERT INTO admin_notifications (tenant_id, tenant_name, unit_number, request_title, request_category, request_priority, request_description) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$tenant_id, $tenant_name, $unit_number, $title, $category, $priority, $description]);
+        
+        // You can also send email notification here if needed
+        // sendAdminEmail($tenant_name, $unit_number, $title, $category, $priority, $description);
+        
+        return true;
+    } catch (PDOException $e) {
+        error_log("Admin notification error: " . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Send email notification to admin (optional)
+ */
+function sendAdminEmail($tenant_name, $unit_number, $title, $category, $priority, $description) {
+    $to = "admin@mojotenant.com"; // Replace with actual admin email
+    $subject = "New Maintenance Request - " . ucfirst($priority) . " Priority";
+    
+    $message = "
+    <html>
+    <head>
+        <title>New Maintenance Request</title>
+    </head>
+    <body>
+        <h2>New Maintenance Request Submitted</h2>
+        <table>
+            <tr><td><strong>Tenant:</strong></td><td>$tenant_name</td></tr>
+            <tr><td><strong>Unit Number:</strong></td><td>$unit_number</td></tr>
+            <tr><td><strong>Title:</strong></td><td>$title</td></tr>
+            <tr><td><strong>Category:</strong></td><td>$category</td></tr>
+            <tr><td><strong>Priority:</strong></td><td>" . ucfirst($priority) . "</td></tr>
+            <tr><td><strong>Description:</strong></td><td>$description</td></tr>
+            <tr><td><strong>Submitted:</strong></td><td>" . date('Y-m-d H:i:s') . "</td></tr>
+        </table>
+        <br>
+        <p>Please log in to the admin panel to review this request.</p>
+    </body>
+    </html>
+    ";
+    
+    $headers = "MIME-Version: 1.0" . "\r\n";
+    $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
+    $headers .= "From: maintenance@mojotenant.com" . "\r\n";
+    
+    mail($to, $subject, $message, $headers);
 }
 ?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mojo Tenant System | Maintenance</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary: #0d6efd;
-            --primary-dark: #0b5ed7;
-            --secondary: #6c757d;
-            --success: #198754;
-            --warning: #ffc107;
-            --danger: #dc3545;
-            --light: #f8f9fa;
-            --dark: #212529;
-            --sidebar-width: 280px;
-        }
-
-        body {
-            background-color: #f8fafc;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow-x: hidden;
-        }
-
-        .sidebar {
-            height: 100vh;
-            background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            padding: 0;
-            position: fixed;
-            width: var(--sidebar-width);
-            box-shadow: 3px 0 10px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .sidebar-header {
-            padding: 25px 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            flex-shrink: 0;
-        }
-
-        .sidebar-header h4 {
-            margin: 0;
-            font-weight: 700;
-        }
-
-        .user-info {
-            padding: 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            flex-shrink: 0;
-        }
-
-        .user-info p {
-            margin: 0;
-        }
-
-        .sidebar-nav {
-            padding: 15px 0;
-            flex: 1;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .sidebar-nav a {
-            color: white;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            padding: 10px 20px;
-            margin: 3px 10px;
-            border-radius: 8px;
-            transition: all 0.3s ease;
-            font-weight: 500;
-            flex-shrink: 0;
-        }
-
-        .sidebar-nav a i {
-            width: 24px;
-            margin-right: 12px;
-            text-align: center;
-            font-size: 1.1rem;
-        }
-
-        .sidebar-nav a:hover {
-            background: rgba(255, 255, 255, 0.15);
-            transform: translateX(5px);
-        }
-
-        .sidebar-nav a.active {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .sidebar-nav a.logout {
-            color: #ff6b6b;
-            margin-top: auto;
-            margin-bottom: 20px;
-        }
-
-        .content {
-            margin-left: var(--sidebar-width);
-            padding: 30px;
-            min-height: 100vh;
-        }
-
-        .card {
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            margin-bottom: 20px;
-            overflow: hidden;
-        }
-
-        .card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .card-header {
-            background-color: white;
-            border-bottom: 1px solid #eaeaea;
-            padding: 1.25rem;
-        }
-
-        .status-badge {
-            padding: 0.35em 0.65em;
-            font-size: 0.75em;
-            font-weight: 600;
-        }
-
-        .priority-badge {
-            padding: 0.35em 0.65em;
-            font-size: 0.75em;
-            font-weight: 600;
-        }
-
-        .priority-low {
-            background-color: #d1ecf1;
-            color: #0c5460;
-        }
-
-        .priority-medium {
-            background-color: #fff3cd;
-            color: #856404;
-        }
-
-        .priority-high {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-
-        .priority-emergency {
-            background-color: #721c24;
-            color: white;
-        }
-
-        .request-item {
-            border-left: 4px solid var(--primary);
-            transition: all 0.3s ease;
-        }
-
-        .request-item:hover {
-            border-left-color: var(--primary-dark);
-        }
-
-        .request-item.pending {
-            border-left-color: var(--warning);
-        }
-
-        .request-item.in_progress {
-            border-left-color: var(--primary);
-        }
-
-        .request-item.completed {
-            border-left-color: var(--success);
-        }
-
-        .request-item.cancelled {
-            border-left-color: var(--danger);
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                height: auto;
-                position: relative;
-            }
-            
-            .content {
-                margin-left: 0;
-            }
-
-            .sidebar-nav {
-                max-height: 300px;
-            }
-        }
-
-        .form-section {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #6c757d;
-        }
-
-        .empty-state i {
-            font-size: 4rem;
-            margin-bottom: 20px;
-            color: #dee2e6;
-        }
-    </style>
-</head>
-<body>
-
-<div class="sidebar">
-    <div class="sidebar-header">
-        <h4><i class="fas fa-home me-2"></i>Mojo Tenant</h4>
-    </div>
-    
-    <div class="user-info">
-        <p>Welcome, <strong><?= htmlspecialchars($full_name) ?></strong></p>
-        <small class="text-light"><?= htmlspecialchars($email) ?></small>
-    </div>
-    
-    <div class="sidebar-nav">
-        <a href="dashboard.php">
-            <i class="fas fa-chart-line"></i> Dashboard
-        </a>
-        <a href="profile.php">
-            <i class="fas fa-user"></i> Profile
-        </a>
-        <a href="rent.php">
-            <i class="fas fa-money-bill-wave"></i> Rent & Payments
-        </a>
-        <a href="maintenance.php" class="active">
-            <i class="fas fa-tools"></i> Maintenance
-        </a>
-        <a href="announcements.php">
-            <i class="fas fa-bullhorn"></i> Announcements
-        </a>
-        <a href="messages.php">
-            <i class="fas fa-comments"></i> Messages
-        </a>
-        <a href="settings.php">
-            <i class="fas fa-cog"></i> Settings
-        </a>
-        <a href="logout.php" class="logout">
-            <i class="fas fa-sign-out-alt"></i> Logout
-        </a>
-    </div>
-</div>
-
-<div class="content">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="mb-1">Maintenance Requests</h2>
-            <p class="text-muted">Submit and track maintenance requests for your property</p>
-        </div>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newRequestModal">
-            <i class="fas fa-plus me-2"></i>New Request
-        </button>
-    </div>
-
-    <!-- Success/Error Messages -->
-    <?php if ($success_message): ?>
-        <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle me-2"></i><?= htmlspecialchars($success_message) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    <?php endif; ?>
-    
-    <?php if ($error_message): ?>
-        <div class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="fas fa-exclamation-circle me-2"></i><?= htmlspecialchars($error_message) ?>
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    <?php endif; ?>
-
-    <div class="row">
-        <div class="col-lg-8">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Your Maintenance Requests</h5>
-                </div>
-                <div class="card-body p-0">
-                    <?php if (empty($maintenance_requests)): ?>
-                        <div class="empty-state">
-                            <i class="fas fa-tools"></i>
-                            <h4>No Maintenance Requests</h4>
-                            <p>You haven't submitted any maintenance requests yet.</p>
-                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newRequestModal">
-                                <i class="fas fa-plus me-2"></i>Submit Your First Request
-                            </button>
-                        </div>
-                    <?php else: ?>
-                        <div class="list-group list-group-flush">
-                            <?php foreach ($maintenance_requests as $request): ?>
-                                <div class="list-group-item request-item <?= $request['status'] ?>">
-                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <h6 class="mb-0"><?= htmlspecialchars($request['title']) ?></h6>
-                                        <div>
-                                            <span class="badge status-badge 
-                                                <?= $request['status'] == 'pending' ? 'bg-warning' : '' ?>
-                                                <?= $request['status'] == 'in_progress' ? 'bg-primary' : '' ?>
-                                                <?= $request['status'] == 'completed' ? 'bg-success' : '' ?>
-                                                <?= $request['status'] == 'cancelled' ? 'bg-danger' : '' ?>">
-                                                <?= ucfirst(str_replace('_', ' ', $request['status'])) ?>
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <p class="text-muted mb-2"><?= htmlspecialchars($request['description']) ?></p>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <span class="badge priority-badge priority-<?= $request['priority'] ?> me-2">
-                                                <?= ucfirst($request['priority']) ?> Priority
-                                            </span>
-                                            <span class="text-muted small">
-                                                <i class="fas fa-tag me-1"></i><?= htmlspecialchars($request['category']) ?>
-                                            </span>
-                                        </div>
-                                        <div class="text-muted small">
-                                            <i class="fas fa-clock me-1"></i>
-                                            <?= date('M j, Y g:i A', strtotime($request['created_at'])) ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Maintenance Guidelines</h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <h6><i class="fas fa-exclamation-triangle text-warning me-2"></i>Emergency Issues</h6>
-                        <p class="small text-muted">For emergencies (flooding, gas leaks, electrical hazards), call our emergency line immediately at (555) 123-EMER.</p>
-                    </div>
-                    <div class="mb-3">
-                        <h6><i class="fas fa-clock text-primary me-2"></i>Response Times</h6>
-                        <p class="small text-muted">Emergency: Within 2 hours<br>High Priority: 24 hours<br>Medium Priority: 3-5 days<br>Low Priority: 7-10 days</p>
-                    </div>
-                    <div class="mb-3">
-                        <h6><i class="fas fa-info-circle text-info me-2"></i>What to Include</h6>
-                        <p class="small text-muted">Provide clear descriptions, photos if possible, and best times for access to your unit.</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Request Statistics</h5>
-                </div>
-                <div class="card-body">
-                    <?php
-                    $stats = [
-                        'pending' => 0,
-                        'in_progress' => 0,
-                        'completed' => 0,
-                        'cancelled' => 0
-                    ];
-                    
-                    foreach ($maintenance_requests as $request) {
-                        $stats[$request['status']]++;
-                    }
-                    ?>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span>Pending</span>
-                            <span><?= $stats['pending'] ?></span>
-                        </div>
-                        <div class="progress" style="height: 8px;">
-                            <div class="progress-bar bg-warning" style="width: <?= count($maintenance_requests) > 0 ? ($stats['pending'] / count($maintenance_requests)) * 100 : 0 ?>%"></div>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span>In Progress</span>
-                            <span><?= $stats['in_progress'] ?></span>
-                        </div>
-                        <div class="progress" style="height: 8px;">
-                            <div class="progress-bar bg-primary" style="width: <?= count($maintenance_requests) > 0 ? ($stats['in_progress'] / count($maintenance_requests)) * 100 : 0 ?>%"></div>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span>Completed</span>
-                            <span><?= $stats['completed'] ?></span>
-                        </div>
-                        <div class="progress" style="height: 8px;">
-                            <div class="progress-bar bg-success" style="width: <?= count($maintenance_requests) > 0 ? ($stats['completed'] / count($maintenance_requests)) * 100 : 0 ?>%"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- New Request Modal -->
-<div class="modal fade" id="newRequestModal" tabindex="-1" aria-labelledby="newRequestModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="newRequestModalLabel">Submit Maintenance Request</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form method="POST" action="">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="title" class="form-label">Request Title *</label>
-                        <input type="text" class="form-control" id="title" name="title" required placeholder="Brief description of the issue">
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="category" class="form-label">Category *</label>
-                        <select class="form-select" id="category" name="category" required>
-                            <option value="">Select a category</option>
-                            <option value="Plumbing">Plumbing</option>
-                            <option value="Electrical">Electrical</option>
-                            <option value="HVAC">HVAC</option>
-                            <option value="Appliances">Appliances</option>
-                            <option value="Structural">Structural</option>
-                            <option value="Pest Control">Pest Control</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="priority" class="form-label">Priority Level *</label>
-                        <select class="form-select" id="priority" name="priority" required>
-                            <option value="low">Low - Minor issue, no urgency</option>
-                            <option value="medium" selected>Medium - Standard repair needed</option>
-                            <option value="high">High - Significant impact on living conditions</option>
-                            <option value="emergency">Emergency - Immediate danger or damage</option>
-                        </select>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="description" class="form-label">Detailed Description *</label>
-                        <textarea class="form-control" id="description" name="description" rows="5" required placeholder="Please provide as much detail as possible about the issue..."></textarea>
-                    </div>
-                    
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <strong>Note:</strong> For emergency situations (flooding, gas leaks, electrical hazards), please call our emergency line immediately at (555) 123-EMER.
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" name="submit_request" class="btn btn-primary">Submit Request</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Auto-dismiss alerts after 5 seconds
-        setTimeout(function() {
-            const alerts = document.querySelectorAll('.alert');
-            alerts.forEach(function(alert) {
-                const bsAlert = new bootstrap.Alert(alert);
-                bsAlert.close();
-            });
-        }, 5000);
-
-        // Form validation
-        const form = document.querySelector('form');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                const title = document.getElementById('title');
-                const category = document.getElementById('category');
-                const description = document.getElementById('description');
-                
-                if (!title.value.trim() || !category.value || !description.value.trim()) {
-                    e.preventDefault();
-                    alert('Please fill in all required fields.');
-                }
-            });
-        }
-    });
-</script>
-</body>
-</html>
