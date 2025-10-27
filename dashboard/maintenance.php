@@ -298,4 +298,103 @@ try {
             }
 
             .sidebar-nav {
-            
+                max-height: 300px;
+            }
+        }
+
+        .form-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #dee2e6;
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="sidebar-header">
+        <h4><i class="fas fa-home me-2"></i>Mojo Tenant</h4>
+    </div>
+    
+    <div class="user-info">
+        <p>Welcome, <strong><?= htmlspecialchars($full_name) ?></strong></p>
+        <small class="text-light"><?= htmlspecialchars($email) ?></small>
+    </div>
+    
+    <div class="sidebar-nav">
+        <a href="dashboard.php">
+            <i class="fas fa-chart-line"></i> Dashboard
+        </a>
+        <a href="profile.php">
+            <i class="fas fa-user"></i> Profile
+        </a>
+        <a href="rent.php">
+            <i class="fas fa-money-bill-wave"></i> Rent & Payments
+        </a>
+        <a href="maintenance.php" class="active">
+            <i class="fas fa-tools"></i> Maintenance
+        </a>
+        <a href="announcements.php">
+            <i class="fas fa-bullhorn"></i> Announcements
+        </a>
+        <a href="messages.php">
+            <i class="fas fa-comments"></i> Messages
+        </a>
+        <a href="settings.php">
+            <i class="fas fa-cog"></i> Settings
+        </a>
+        <a href="logout.php" class="logout">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
+    </div>
+</div>
+
+<div class="content">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-1">Maintenance Requests</h2>
+            <p class="text-muted">Submit and track maintenance requests for your property</p>
+        </div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newRequestModal">
+            <i class="fas fa-plus me-2"></i>New Request
+        </button>
+    </div>
+
+    <!-- Success/Error Messages -->
+    <?php if ($success_message): ?>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i><?= htmlspecialchars($success_message) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <?php endif; ?>
+    
+    <?php if ($error_message): ?>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i><?= htmlspecialchars($error_message) ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    <?php endif; ?>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Your Maintenance Requests</h5>
+                </div>
+                <div class="card-body p-0">
+                    <?php if (empty($maintenance_requests)): ?>
+                        <div class="empty-state"> 
