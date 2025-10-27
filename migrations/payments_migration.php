@@ -3,7 +3,7 @@
 
 $servername = "localhost";
 $username = "root";
-$password = "1234";
+$password = "";
 $dbname = "auth_db";
 
 // Connect to MySQL
