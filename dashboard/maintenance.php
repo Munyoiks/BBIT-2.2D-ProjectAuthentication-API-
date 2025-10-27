@@ -500,4 +500,106 @@ try {
                             <div class="progress-bar bg-primary" style="width: <?= count($maintenance_requests) > 0 ? ($stats['in_progress'] / count($maintenance_requests)) * 100 : 0 ?>%"></div>
                         </div>
                     </div>
-                  
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Completed</span>
+                            <span><?= $stats['completed'] ?></span>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" style="width: <?= count($maintenance_requests) > 0 ? ($stats['completed'] / count($maintenance_requests)) * 100 : 0 ?>%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Request Modal -->
+<div class="modal fade" id="newRequestModal" tabindex="-1" aria-labelledby="newRequestModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="newRequestModalLabel">Submit Maintenance Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST" action="">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Request Title *</label>
+                        <input type="text" class="form-control" id="title" name="title" required placeholder="Brief description of the issue">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="category" class="form-label">Category *</label>
+                        <select class="form-select" id="category" name="category" required>
+                            <option value="">Select a category</option>
+                            <option value="Plumbing">Plumbing</option>
+                            <option value="Electrical">Electrical</option>
+                            <option value="HVAC">HVAC</option>
+                            <option value="Appliances">Appliances</option>
+                            <option value="Structural">Structural</option>
+                            <option value="Pest Control">Pest Control</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="priority" class="form-label">Priority Level *</label>
+                        <select class="form-select" id="priority" name="priority" required>
+                            <option value="low">Low - Minor issue, no urgency</option>
+                            <option value="medium" selected>Medium - Standard repair needed</option>
+                            <option value="high">High - Significant impact on living conditions</option>
+                            <option value="emergency">Emergency - Immediate danger or damage</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Detailed Description *</label>
+                        <textarea class="form-control" id="description" name="description" rows="5" required placeholder="Please provide as much detail as possible about the issue..."></textarea>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Note:</strong> For emergency situations (flooding, gas leaks, electrical hazards), please call our emergency line immediately at (555) 123-EMER.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" name="submit_request" class="btn btn-primary">Submit Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-dismiss alerts after 5 seconds
+        setTimeout(function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+
+        // Form validation
+        const form = document.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const title = document.getElementById('title');
+                const category = document.getElementById('category');
+                const description = document.getElementById('description');
+                
+                if (!title.value.trim() || !category.value || !description.value.trim()) {
+                    e.preventDefault();
+                    alert('Please fill in all required fields.');
+                }
+            });
+        }
+    });
+</script>
+</body>
+</html>
