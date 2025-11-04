@@ -22,105 +22,180 @@ session_start();
       justify-content: center;
       align-items: center;
       padding: 20px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: 
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.2) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(118, 75, 162, 0.2) 0%, transparent 50%);
+      pointer-events: none;
     }
 
     .container {
       background: rgba(255, 255, 255, 0.95);
-      padding: 50px 40px;
-      border-radius: 20px;
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+      padding: 60px 50px;
+      border-radius: 24px;
+      box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.1),
+        0 0 0 1px rgba(255, 255, 255, 0.3);
       width: 100%;
-      max-width: 450px;
+      max-width: 500px;
       text-align: center;
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(15px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      position: relative;
+      z-index: 1;
+      transform: translateY(0);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .container:hover {
+      transform: translateY(-5px);
+      box-shadow: 
+        0 25px 50px rgba(0, 0, 0, 0.15),
+        0 0 0 1px rgba(255, 255, 255, 0.4);
     }
 
     .logo {
-      font-size: 3rem;
-      margin-bottom: 15px;
+      font-size: 4rem;
+      margin-bottom: 20px;
       display: block;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 4px 8px rgba(102, 126, 234, 0.2));
     }
 
     h1 {
-      color: #333;
-      font-size: 32px;
+      color: #2d3748;
+      font-size: 36px;
       margin-bottom: 15px;
-      font-weight: 600;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #2d3748, #4a5568);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .subtitle {
-      color: #666;
-      font-size: 16px;
-      margin-bottom: 40px;
-      line-height: 1.5;
+      color: #718096;
+      font-size: 17px;
+      margin-bottom: 45px;
+      line-height: 1.6;
+      font-weight: 400;
     }
 
     .btn-group {
       display: flex;
       flex-direction: column;
-      gap: 15px;
-      margin-bottom: 30px;
+      gap: 18px;
+      margin-bottom: 35px;
     }
 
     .btn {
-      padding: 16px 24px;
+      padding: 18px 28px;
       border: none;
-      border-radius: 12px;
+      border-radius: 14px;
       font-size: 16px;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       text-decoration: none;
       display: block;
       text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
+    }
+
+    .btn:hover::before {
+      left: 100%;
     }
 
     .btn-register {
       background: linear-gradient(135deg, #28a745, #20c997);
       color: white;
-      box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+      box-shadow: 0 6px 20px rgba(40, 167, 69, 0.25);
     }
 
     .btn-register:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(40, 167, 69, 0.4);
     }
 
     .btn-login {
       background: linear-gradient(135deg, #ffc107, #fd7e14);
       color: white;
-      box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+      box-shadow: 0 6px 20px rgba(255, 193, 7, 0.25);
     }
 
     .btn-login:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(255, 193, 7, 0.4);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(255, 193, 7, 0.4);
     }
 
     .features {
-      background: rgba(102, 126, 234, 0.1);
-      padding: 20px;
-      border-radius: 12px;
-      margin-bottom: 30px;
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08));
+      padding: 25px;
+      border-radius: 16px;
+      margin-bottom: 35px;
+      border: 1px solid rgba(102, 126, 234, 0.1);
+      position: relative;
+    }
+
+    .features::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      border-radius: 16px 16px 0 0;
     }
 
     .features h3 {
-      color: #333;
-      margin-bottom: 15px;
+      color: #2d3748;
+      margin-bottom: 20px;
       font-size: 18px;
+      font-weight: 600;
     }
 
     .features ul {
       list-style: none;
       text-align: left;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
     }
 
     .features li {
-      color: #555;
-      margin-bottom: 8px;
-      padding-left: 20px;
+      color: #4a5568;
+      margin-bottom: 0;
+      padding: 8px 0 8px 28px;
       position: relative;
+      font-weight: 500;
     }
 
     .features li:before {
@@ -128,21 +203,30 @@ session_start();
       color: #28a745;
       font-weight: bold;
       position: absolute;
-      left: 0;
+      left: 8px;
+      background: rgba(40, 167, 69, 0.1);
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
     }
 
     footer {
-      margin-top: 25px;
-      color: #888;
+      margin-top: 30px;
+      color: #718096;
       font-size: 14px;
-      border-top: 1px solid rgba(0, 0, 0, 0.1);
-      padding-top: 20px;
+      border-top: 1px solid rgba(0, 0, 0, 0.08);
+      padding-top: 25px;
     }
 
     .company-name {
-      color: #333;
+      color: #2d3748;
       font-weight: 600;
-      margin-top: 5px;
+      margin-top: 8px;
+      font-size: 15px;
     }
 
     @media (max-width: 480px) {
@@ -152,6 +236,20 @@ session_start();
       
       h1 {
         font-size: 28px;
+      }
+      
+      .features ul {
+        grid-template-columns: 1fr;
+      }
+      
+      .logo {
+        font-size: 3.5rem;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .container {
+        padding: 30px 20px;
       }
     }
   </style>
