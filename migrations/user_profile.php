@@ -1,10 +1,11 @@
+// user_profile.php
 <?php
-// migration_create_user_tables.php
+
 
 $host = 'localhost';
 $db   = 'auth_db';
 $user = 'root';
-$pass = ''; // <--
+$pass = '1234'; // <--
 //  Change this to your actual password
 $charset = 'utf8mb4';
 
