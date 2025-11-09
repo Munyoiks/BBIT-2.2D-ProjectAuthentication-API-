@@ -3,7 +3,7 @@
 
 $servername = "localhost";
 $username = "root";
-$password = "";
+$password = "1234";
 $dbname = "auth_db";
 
 // Connect to MySQL
@@ -23,7 +23,7 @@ if ($conn->query($sql) === TRUE) {
 // Select the database
 $conn->select_db($dbname);
 
-// Create `payments` table with the exact structure
+// Create payments table with the exact structure
 $sql = "
 CREATE TABLE IF NOT EXISTS payments (
     id INT(11) AUTO_INCREMENT PRIMARY KEY,
