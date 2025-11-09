@@ -46,7 +46,7 @@ if ($conn->query($sql) === TRUE) {
     echo " Error creating 'admin_notifications' table: " . $conn->error . "<br>";
 }
 
-// Verify existing columns and alter if needed
+// Verify the existing columns and alter if needed
 $result = $conn->query("DESCRIBE admin_notifications");
 if ($result) {
     $existingColumns = [];
@@ -140,7 +140,6 @@ if ($check) {
 } else {
     echo " Error checking notifications: " . $conn->error . "<br>";
 }
-
 //  Display notifications summary
 echo "<br>📬 Current Admin Notifications:<br>";
 $result = $conn->query("SELECT id, tenant_name, request_title, request_priority, is_read, created_at FROM admin_notifications ORDER BY created_at DESC");
