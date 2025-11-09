@@ -9,13 +9,13 @@ $dbname = "auth_db";
 // Connect to MySQL
 $conn = new mysqli($servername, $username, $password);
 if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+    die(" Connection failed: " . $conn->connect_error);
 }
 
 // Create database if not exists
-$sql = "CREATE DATABASE IF NOT EXISTS $dbname";
+$sql = "CREATE DATABASE IF NOT EXISTS $dbname CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
 if ($conn->query($sql) === TRUE) {
-    echo "Database '$dbname' created or already exists.<br>";
+    echo " Database '$dbname' created or already exists.<br>";
 } else {
     die("Error creating database: " . $conn->error);
 }
@@ -23,23 +23,28 @@ if ($conn->query($sql) === TRUE) {
 // Select the database
 $conn->select_db($dbname);
 
-// Create announcements table with the exact structure
+// Create announcements table with full structure
 $sql = "
 CREATE TABLE IF NOT EXISTS announcements (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status ENUM('pending','approved') DEFAULT 'pending',
+    posted_by INT(11) DEFAULT 1,
+    suggested_by INT(11) DEFAULT NULL,
+    related_suggestion_id INT(11) DEFAULT NULL,
+    priority ENUM('low','medium','high') DEFAULT 'low'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ";
 
 if ($conn->query($sql) === TRUE) {
-    echo "Table 'announcements' created or already exists.<br>";
+    echo " Table 'announcements' created or already exists.<br>";
 } else {
-    echo "Error creating announcements table: " . $conn->error . "<br>";
+    echo "Error creating 'announcements' table: " . $conn->error . "<br>";
 }
 
-// Check if we need to alter the table structure (for existing tables)
+// Verify existing columns and alter if needed
 $result = $conn->query("DESCRIBE announcements");
 if ($result) {
     $existingColumns = [];
@@ -47,136 +52,105 @@ if ($result) {
         $existingColumns[$row['Field']] = true;
     }
 
-    // Add missing columns if they don't exist
-    if (!isset($existingColumns['title'])) {
-        $conn->query("ALTER TABLE announcements ADD COLUMN title VARCHAR(255) NOT NULL");
-        echo "Added missing column: title<br>";
-    }
+    // Columns that should exist
+    $columnsToAdd = [
+        'title' => "ALTER TABLE announcements ADD COLUMN title VARCHAR(255) NOT NULL",
+        'message' => "ALTER TABLE announcements ADD COLUMN message TEXT NOT NULL",
+        'created_at' => "ALTER TABLE announcements ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+        'status' => "ALTER TABLE announcements ADD COLUMN status ENUM('pending','approved') DEFAULT 'pending'",
+        'posted_by' => "ALTER TABLE announcements ADD COLUMN posted_by INT(11) DEFAULT 1",
+        'suggested_by' => "ALTER TABLE announcements ADD COLUMN suggested_by INT(11) DEFAULT NULL",
+        'related_suggestion_id' => "ALTER TABLE announcements ADD COLUMN related_suggestion_id INT(11) DEFAULT NULL",
+        'priority' => "ALTER TABLE announcements ADD COLUMN priority ENUM('low','medium','high') DEFAULT 'low'"
+    ];
 
-    if (!isset($existingColumns['message'])) {
-        $conn->query("ALTER TABLE announcements ADD COLUMN message TEXT NOT NULL");
-        echo "Added missing column: message<br>";
-    }
-
-    if (!isset($existingColumns['created_at'])) {
-        $conn->query("ALTER TABLE announcements ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
-        echo "Added missing column: created_at<br>";
+    foreach ($columnsToAdd as $col => $query) {
+        if (!isset($existingColumns[$col])) {
+            $conn->query($query);
+            echo " Added missing column: $col<br>";
+        }
     }
 } else {
-    echo "Error describing announcements table: " . $conn->error . "<br>";
+    echo " Error describing announcements table: " . $conn->error . "<br>";
 }
 
-// Add sample announcement data for testing (only if no announcements exist)
-$checkAnnouncements = $conn->query("SELECT COUNT(*) as count FROM announcements");
-if ($checkAnnouncements) {
-    $announcementCount = $checkAnnouncements->fetch_assoc()['count'];
-    
-    if ($announcementCount == 0) {
-        // Insert sample announcements
-        $sampleAnnouncements = [
+//  Add sample announcements if none exist
+$check = $conn->query("SELECT COUNT(*) AS count FROM announcements");
+if ($check) {
+    $count = (int)$check->fetch_assoc()['count'];
+    if ($count === 0) {
+        $samples = [
             [
                 'title' => 'Welcome to Our Apartment Community!',
-                'message' => 'We would like to extend a warm welcome to all our new and existing residents. Our community is growing, and we\'re excited to have you here. Please remember to follow the community guidelines and be respectful of your neighbors.'
+                'message' => 'We would like to extend a warm welcome to all our residents.',
+                'status' => 'approved',
+                'priority' => 'medium'
             ],
             [
                 'title' => 'Maintenance Schedule Update',
-                'message' => 'Scheduled maintenance for the building elevators will take place next Tuesday from 9:00 AM to 3:00 PM. During this time, elevator services will be temporarily unavailable. We apologize for any inconvenience and appreciate your understanding.'
-            ],
-            [
-                'title' => 'Rent Payment Reminder',
-                'message' => 'This is a friendly reminder that rent payments are due by the 5th of every month. Late payments will incur a penalty fee as per your rental agreement. You can make payments through the online portal or at the management office.'
+                'message' => 'Elevator maintenance next Tuesday, 9:00 AM–3:00 PM.',
+                'status' => 'pending',
+                'priority' => 'high'
             ],
             [
                 'title' => 'Community Clean-up Day',
-                'message' => 'Join us for our quarterly community clean-up day this Saturday from 8:00 AM to 12:00 PM. We\'ll be cleaning common areas, the garden, and the parking lot. Refreshments will be provided for all volunteers!'
-            ],
-            [
-                'title' => 'Parking Lot Repairs',
-                'message' => 'Important: The west parking lot will be closed for repairs from Monday to Friday next week. Please use the east parking lot during this period. Vehicles left in the west lot will be towed at the owner\'s expense.'
-            ],
-            [
-                'title' => 'New Security Measures',
-                'message' => 'To enhance security in our building, we have installed additional CCTV cameras in common areas and upgraded the access control system. All residents will receive new access cards by the end of the week. Please visit the management office to collect yours.'
-            ],
-            [
-                'title' => 'Utility Bill Update',
-                'message' => 'Please be informed that water and electricity bills for the previous month are now available for viewing in your tenant portal. Payments are due within 15 days. Contact management if you have any questions about your bill.'
-            ],
-            [
-                'title' => 'Fire Safety Drill',
-                'message' => 'A mandatory fire safety drill will be conducted next Wednesday at 10:00 AM. All residents are required to participate. Please follow instructions from building management and emergency personnel during the drill.'
-            ],
-            [
-                'title' => 'Gym Equipment Maintenance',
-                'message' => 'The gym will be closed for equipment maintenance and upgrades from Thursday to Sunday this week. We apologize for the inconvenience and look forward to providing you with better facilities when we reopen.'
-            ],
-            [
-                'title' => 'Holiday Season Notice',
-                'message' => 'As we approach the holiday season, please be mindful of noise levels, especially during evening hours. Also, remember that decorations in common areas must be approved by management. Wishing everyone a joyful holiday season!'
+                'message' => 'Join us this Saturday from 8:00 AM for our community clean-up!',
+                'status' => 'approved',
+                'priority' => 'low'
             ]
         ];
-        
-        $insertCount = 0;
-        foreach ($sampleAnnouncements as $announcement) {
-            $stmt = $conn->prepare("
-                INSERT INTO announcements (title, message)
-                VALUES (?, ?)
-            ");
-            $stmt->bind_param(
-                "ss", 
-                $announcement['title'],
-                $announcement['message']
-            );
-            
-            if ($stmt->execute()) {
-                $insertCount++;
-            }
-            $stmt->close();
+
+        $stmt = $conn->prepare("
+            INSERT INTO announcements (title, message, status, priority)
+            VALUES (?, ?, ?, ?)
+        ");
+
+        foreach ($samples as $a) {
+            $stmt->bind_param("ssss", $a['title'], $a['message'], $a['status'], $a['priority']);
+            $stmt->execute();
         }
-        
-        echo "Added $insertCount sample announcement records.<br>";
+        $stmt->close();
+
+        echo " Added sample announcements.<br>";
     } else {
-        echo "Announcements already exist in the database ($announcementCount records).<br>";
+        echo " Announcements already exist ($count record(s)).<br>";
     }
-}
-
-// Display current announcements for verification
-echo "<br>Current announcements in database:<br>";
-$announcementsResult = $conn->query("SELECT id, title, message, created_at FROM announcements ORDER BY created_at DESC");
-if ($announcementsResult && $announcementsResult->num_rows > 0) {
-    echo "<div style='margin: 20px 0;'>";
-    while ($announcement = $announcementsResult->fetch_assoc()) {
-        echo "<div style='border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; background-color: #f9f9f9;'>";
-        echo "<h3 style='margin: 0 0 10px 0; color: #333;'>{$announcement['title']}</h3>";
-        echo "<p style='margin: 0 0 10px 0; color: #666; line-height: 1.5;'>{$announcement['message']}</p>";
-        echo "<small style='color: #999;'>Posted on: " . date('F j, Y g:i A', strtotime($announcement['created_at'])) . "</small>";
-        echo "</div>";
-    }
-    echo "</div>";
 } else {
-    echo "No announcements found in database.<br>";
+    echo " Error checking announcements: " . $conn->error . "<br>";
 }
 
-// Show statistics
-$statsResult = $conn->query("
-    SELECT 
-        COUNT(*) as total,
-        MIN(created_at) as oldest,
-        MAX(created_at) as newest
+// Display announcements
+echo "<br> Current Announcements:<br>";
+$result = $conn->query("SELECT id, title, status, priority, created_at FROM announcements ORDER BY created_at DESC");
+if ($result && $result->num_rows > 0) {
+    echo "<table border='1' style='border-collapse:collapse;margin:10px 0;'>";
+    echo "<tr><th>ID</th><th>Title</th><th>Status</th><th>Priority</th><th>Created At</th></tr>";
+    while ($row = $result->fetch_assoc()) {
+        echo "<tr>";
+        echo "<td>{$row['id']}</td>";
+        echo "<td>{$row['title']}</td>";
+        echo "<td>{$row['status']}</td>";
+        echo "<td>{$row['priority']}</td>";
+        echo "<td>{$row['created_at']}</td>";
+        echo "</tr>";
+    }
+    echo "</table>";
+} else {
+    echo "No announcements found.<br>";
+}
+
+// Table stats
+$stats = $conn->query("
+    SELECT COUNT(*) AS total, MIN(created_at) AS oldest, MAX(created_at) AS newest
     FROM announcements
 ");
-
-if ($statsResult && $statsRow = $statsResult->fetch_assoc()) {
-    echo "<br>Announcements Statistics:<br>";
-    echo "- Total Announcements: {$statsRow['total']}<br>";
-    if ($statsRow['oldest']) {
-        echo "- Oldest Announcement: " . date('F j, Y', strtotime($statsRow['oldest'])) . "<br>";
-    }
-    if ($statsRow['newest']) {
-        echo "- Newest Announcement: " . date('F j, Y', strtotime($statsRow['newest'])) . "<br>";
-    }
+if ($stats && $row = $stats->fetch_assoc()) {
+    echo "<br> Announcements Stats:<br>";
+    echo "- Total: {$row['total']}<br>";
+    if ($row['oldest']) echo "- Oldest: " . date('F j, Y', strtotime($row['oldest'])) . "<br>";
+    if ($row['newest']) echo "- Newest: " . date('F j, Y', strtotime($row['newest'])) . "<br>";
 }
 
-echo "<br>Announcements migration complete!";
+echo "<br>✅ Announcements migration complete!";
 $conn->close();
 ?>
