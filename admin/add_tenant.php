@@ -1,4 +1,3 @@
-// add_tenant.php
 <?php
 session_start();
 
