@@ -1,3 +1,4 @@
+//settings.php
 <?php
 session_start();
 if (!isset($_SESSION['user_id'])) {
@@ -9,8 +10,14 @@ if (!isset($_SESSION['user_id'])) {
 $host = 'localhost';
 $dbname = 'auth_db';
 $username = 'root';
-$password = 'munyoiks7';
+$password = '';
 
+// Initialize variables to avoid undefined warnings
+$full_name = '';
+$email = '';
+$phone = '';
+$created_at = '';
+$apartment_id = null;
 $success_message = '';
 $error_message = '';
 
@@ -20,7 +27,7 @@ try {
     
     // Fetch user data from database
     $user_id = $_SESSION['user_id'];
-    $stmt = $pdo->prepare("SELECT full_name, email, phone, created_at FROM users WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT full_name, email, phone, created_at, apartment_id FROM users WHERE id = ?");
     $stmt->execute([$user_id]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
     
@@ -29,6 +36,7 @@ try {
         $email = $user['email'];
         $phone = $user['phone'] ?? 'Not set';
         $created_at = $user['created_at'];
+        $apartment_id = $user['apartment_id'];
         
         // Update session with latest data
         $_SESSION['full_name'] = $full_name;
@@ -39,13 +47,13 @@ try {
         $email = $_SESSION['email'] ?? '';
         $phone = 'Not set';
         $created_at = date('Y-m-d');
+        $apartment_id = null;
     }
 
     // Handle name and profile update
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_profile'])) {
         $new_name = trim($_POST['full_name']);
         $new_phone = trim($_POST['phone']);
-        $notification_preferences = isset($_POST['email_notifications']) ? 1 : 0;
         
         // Validate name
         if (empty($new_name)) {
@@ -95,15 +103,272 @@ try {
         }
     }
 
+// Handle account deletion (archive + delete)
+// Handle account deletion (archive + delete)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_account'])) {
+    $user_id = $_SESSION['user_id'];
+    $confirm_text = $_POST['confirm_text'] ?? '';
+
+    if ($confirm_text !== 'DELETE ALL') {
+        $error_message = "Please type 'DELETE ALL' to confirm account deletion.";
+    } else {
+        try {
+            $pdo->beginTransaction();
+
+            // 1️⃣ Get the current user's details including role and relationships
+            $stmt = $pdo->prepare("
+                SELECT u.id, u.email, u.full_name, u.apartment_id, u.unit_role, u.is_primary_tenant, 
+                       u.linked_to, p.email as primary_tenant_email
+                FROM users u 
+                LEFT JOIN users p ON u.linked_to = p.id 
+                WHERE u.id = ?
+            ");
+            $stmt->execute([$user_id]);
+            $current_user = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$current_user) {
+                throw new Exception("User not found!");
+            }
+            
+            $apartment_id = $current_user['apartment_id'];
+            $user_email = $current_user['email'];
+            $user_full_name = $current_user['full_name'];
+            $is_primary_tenant = $current_user['is_primary_tenant'];
+            $linked_to = $current_user['linked_to'];
+            $primary_tenant_email = $current_user['primary_tenant_email'];
+
+            error_log("Starting deletion process for user: $user_email (ID: $user_id), Apartment: $apartment_id, Primary Tenant: $is_primary_tenant");
+
+            // 2️⃣ Determine which users to delete based on relationships
+            $users_to_delete = [];
+            
+            if ($is_primary_tenant) {
+                // If current user is primary tenant, delete all users in the apartment
+                error_log("User is primary tenant, deleting all users in apartment $apartment_id");
+                $stmt = $pdo->prepare("
+                    SELECT u.id, u.email, u.full_name, u.unit_role, u.is_primary_tenant, 
+                           u.linked_to, p.email as primary_tenant_email
+                    FROM users u 
+                    LEFT JOIN users p ON u.linked_to = p.id 
+                    WHERE u.apartment_id = ?
+                ");
+                $stmt->execute([$apartment_id]);
+                $users_to_delete = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+            } else if ($linked_to) {
+                // If current user is linked to someone, delete all users linked to the same primary tenant
+                error_log("User is linked to primary tenant ID: $linked_to, finding all linked users");
+                $stmt = $pdo->prepare("
+                    SELECT u.id, u.email, u.full_name, u.unit_role, u.is_primary_tenant, 
+                           u.linked_to, p.email as primary_tenant_email
+                    FROM users u 
+                    LEFT JOIN users p ON u.linked_to = p.id 
+                    WHERE u.apartment_id = ? OR u.linked_to = ? OR u.id = ?
+                ");
+                $stmt->execute([$apartment_id, $linked_to, $linked_to]);
+                $users_to_delete = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+            } else {
+                // If no relationships, just delete the current user
+                error_log("No relationships found, deleting only current user");
+                $users_to_delete = [$current_user];
+            }
+
+            error_log("Found " . count($users_to_delete) . " users to delete");
+
+            // 3️⃣ Track the primary tenant email for archiving
+            $primary_tenant_info = null;
+            foreach ($users_to_delete as $user) {
+                if ($user['is_primary_tenant']) {
+                    $primary_tenant_info = $user;
+                    break;
+                }
+            }
+
+            // If no primary tenant found in the list, use the current user's linked_to info
+            if (!$primary_tenant_info && $linked_to) {
+                $stmt = $pdo->prepare("SELECT id, email, full_name FROM users WHERE id = ?");
+                $stmt->execute([$linked_to]);
+                $primary_tenant_info = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+
+            $primary_tenant_email_for_archive = $primary_tenant_info ? $primary_tenant_info['email'] : $user_email;
+            $primary_tenant_id_for_archive = $primary_tenant_info ? $primary_tenant_info['id'] : $user_id;
+
+            error_log("Primary tenant email for archive tracking: $primary_tenant_email_for_archive");
+
+            // 4️⃣ Track emails we've already archived to avoid duplicates
+            $archived_emails = [];
+            
+            // Archive and delete all identified users
+            foreach ($users_to_delete as $user) {
+                $user_id_to_delete = $user['id'];
+                $user_email_to_delete = $user['email'];
+                $user_full_name_to_delete = $user['full_name'];
+                $is_user_primary_tenant = $user['is_primary_tenant'];
+                $user_linked_to = $user['linked_to'];
+
+                error_log("Processing user: $user_email_to_delete (ID: $user_id_to_delete), Primary: $is_user_primary_tenant, Linked To: $user_linked_to");
+
+                // Determine linked_to email for archiving
+                $linked_to_email = null;
+                if ($user_linked_to) {
+                    $stmt = $pdo->prepare("SELECT email FROM users WHERE id = ?");
+                    $stmt->execute([$user_linked_to]);
+                    $linked_user = $stmt->fetch(PDO::FETCH_ASSOC);
+                    $linked_to_email = $linked_user ? $linked_user['email'] : null;
+                }
+
+                // Check if we've already archived this email to avoid duplicates
+                if (in_array($user_email_to_delete, $archived_emails)) {
+                    error_log("Skipping archive for duplicate email: $user_email_to_delete, proceeding with deletion only");
+                    
+                    // Just delete the user without archiving (since it's already archived)
+                    $pdo->prepare("DELETE FROM notifications WHERE user_id = ?")->execute([$user_id_to_delete]);
+                    $pdo->prepare("DELETE FROM mpesa_transactions WHERE user_id = ?")->execute([$user_id_to_delete]);
+                    $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$user_id_to_delete]);
+                    
+                    error_log("Deleted duplicate user without archiving: $user_email_to_delete (ID: $user_id_to_delete)");
+                    continue;
+                }
+
+                // Archive user data with relationship tracking
+                try {
+                    $stmt = $pdo->prepare("
+                        INSERT INTO archived_users (
+                            full_name, email, phone, emergency_contact, password, verification_code,
+                            is_verified, reset_token, reset_expiry, reset_attempts, last_reset_at, token_expiry,
+                            role, unit_number, unit_role, is_primary_tenant, invited_by, invitation_token,
+                            invitation_accepted_at, created_at, updated_at, is_admin, linked_to,
+                            archived_by, deleted_at
+                        )
+                        SELECT 
+                            full_name, email, phone, emergency_contact, password, verification_code,
+                            is_verified, reset_token, reset_expiry, reset_attempts, last_reset_at, token_expiry,
+                            role, unit_number, unit_role, is_primary_tenant, invited_by, invitation_token,
+                            invitation_accepted_at, created_at, updated_at, is_admin, ?,
+                            ?, NOW()
+                        FROM users WHERE id = ?
+                    ");
+                    $archive_result = $stmt->execute([$linked_to_email, $user_id, $user_id_to_delete]);
+                    
+                    if (!$archive_result) {
+                        throw new Exception("Failed to archive user ID: $user_id_to_delete");
+                    }
+                    
+                    // Mark this email as archived
+                    $archived_emails[] = $user_email_to_delete;
+                    error_log("Archived user: $user_email_to_delete, Linked To: " . ($linked_to_email ?: 'N/A'));
+
+                } catch (PDOException $e) {
+                    // If archive fails due to duplicate email, log and continue with deletion
+                    if ($e->getCode() == '23000') {
+                        error_log("Duplicate email detected during archive: $user_email_to_delete, proceeding with deletion only");
+                        $archived_emails[] = $user_email_to_delete;
+                    } else {
+                        throw $e; // Re-throw if it's a different error
+                    }
+                }
+
+                // Archive notifications
+                $stmt = $pdo->prepare("
+                    INSERT INTO archived_notifications (
+                        user_id, title, message, type, is_read, created_at, tenant_id,
+                        subject, sent_date, status, tenant_name, recipient_email,
+                        archived_by, deleted_at
+                    )
+                    SELECT 
+                        user_id, title, message, type, is_read, created_at, tenant_id,
+                        subject, sent_date, status, tenant_name, recipient_email,
+                        ?, NOW()
+                    FROM notifications WHERE user_id = ?
+                ");
+                $stmt->execute([$user_id, $user_id_to_delete]);
+
+                // Archive M-Pesa transactions
+                $stmt = $pdo->prepare("
+                    INSERT INTO archived_mpesa_transactions (
+                        transaction_id, user_id, amount, phone_number, transaction_date,
+                        status, description, archived_by, deleted_at
+                    )
+                    SELECT 
+                        transaction_id, user_id, amount, phone_number, transaction_date,
+                        status, description, ?, NOW()
+                    FROM mpesa_transactions WHERE user_id = ?
+                ");
+                $stmt->execute([$user_id, $user_id_to_delete]);
+
+                // Delete live data
+                $pdo->prepare("DELETE FROM notifications WHERE user_id = ?")->execute([$user_id_to_delete]);
+                $pdo->prepare("DELETE FROM mpesa_transactions WHERE user_id = ?")->execute([$user_id_to_delete]);
+                
+                // Finally delete the user
+                $stmt = $pdo->prepare("DELETE FROM users WHERE id = ?");
+                $delete_result = $stmt->execute([$user_id_to_delete]);
+                
+                if (!$delete_result) {
+                    throw new Exception("Failed to delete user ID: $user_id_to_delete");
+                }
+                
+                error_log("Successfully deleted user: $user_email_to_delete (ID: $user_id_to_delete)");
+            }
+
+            // 5️⃣ Archive and update apartment if it exists
+            if ($apartment_id) {
+                // Check if apartment exists before archiving
+                $stmt = $pdo->prepare("SELECT id FROM apartments WHERE id = ?");
+                $stmt->execute([$apartment_id]);
+                $apartment_exists = $stmt->fetch();
+                
+                if ($apartment_exists) {
+                    // Archive apartment with primary tenant info
+                    $stmt = $pdo->prepare("
+                        INSERT INTO archived_apartments (
+                            apartment_number, building_name, rent_amount, is_occupied, tenant_id,
+                            created_at, archived_by, deleted_at
+                        )
+                        SELECT 
+                            apartment_number, building_name, rent_amount, is_occupied, ?,
+                            created_at, ?, NOW()
+                        FROM apartments WHERE id = ?
+                    ");
+                    $stmt->execute([$primary_tenant_id_for_archive, $user_id, $apartment_id]);
+
+                    // Mark apartment as vacant in live table
+                    $stmt = $pdo->prepare("UPDATE apartments SET status = 'vacant', tenant_id = NULL WHERE id = ?");
+                    $stmt->execute([$apartment_id]);
+                    
+                    error_log("Apartment $apartment_id marked as vacant and archived. Primary tenant was: $primary_tenant_email_for_archive");
+                } else {
+                    error_log("Apartment $apartment_id not found, skipping apartment operations");
+                }
+            }
+
+            // COMMIT THE TRANSACTION
+            $pdo->commit();
+            
+            error_log("TRANSACTION COMMITTED: Account deletion completed successfully. Primary tenant: $primary_tenant_email_for_archive");
+
+            // Destroy session and redirect
+            session_unset();
+            session_destroy();
+            
+            header("Location: ../auth/login.php?deleted=1&primary_tenant=" . urlencode($primary_tenant_email_for_archive));
+            exit();
+
+        } catch (Exception $e) {
+            // ROLLBACK on error
+            $pdo->rollBack();
+            error_log("Account deletion failed for user $user_id: " . $e->getMessage());
+            $error_message = "Error deleting account. Please contact support. Error: " . $e->getMessage();
+        }
+    }
+}
 } catch (PDOException $e) {
-    // Fallback to session data if database connection fails
-    $full_name = $_SESSION['full_name'] ?? 'Tenant';
-    $email = $_SESSION['email'] ?? '';
-    $phone = 'Not set';
-    $created_at = date('Y-m-d');
-    error_log("Database error: " . $e->getMessage());
+    die("Database connection failed: " . $e->getMessage());
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -355,6 +620,10 @@ try {
             border-radius: 8px;
             margin-bottom: 20px;
         }
+
+        .danger-zone {
+            border: 2px solid #dc3545;
+        }
     </style>
 </head>
 <body>
@@ -573,46 +842,25 @@ try {
             </div>
 
             <!-- Danger Zone -->
-            <div class="card mt-4 border-danger">
+            <div class="card mt-4 danger-zone">
                 <div class="card-header bg-danger text-white">
                     <i class="fas fa-exclamation-triangle me-2"></i>Danger Zone
                 </div>
                 <div class="card-body">
-                    <p class="text-muted">Once you delete your account, there is no going back. Please be certain.</p>
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-outline-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
-                            <i class="fas fa-trash me-2"></i>Delete Account
+                    <p class="text-danger"><strong>Warning:</strong> This action will delete your account and ALL related accounts (roommates, spouses, family members) in your apartment.</p>
+                    <p class="text-muted">Once deleted, all data will be permanently removed and cannot be recovered.</p>
+                    
+                    <form method="POST" id="deleteAccountForm">
+                        <div class="mb-3">
+                            <label for="confirm_text" class="form-label">Type "DELETE ALL" to confirm:</label>
+                            <input type="text" class="form-control" id="confirm_text" name="confirm_text" placeholder="Type DELETE ALL here" required>
+                            <div class="form-text">This confirms you understand all accounts in your apartment will be deleted.</div>
+                        </div>
+                        <button type="submit" name="delete_account" class="btn btn-danger w-100" id="deleteButton" disabled>
+                            <i class="fas fa-trash me-2"></i>Delete All Accounts in My Apartment
                         </button>
-                    </div>
+                    </form>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Delete Account Modal -->
-<div class="modal fade" id="deleteAccountModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title text-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Delete Account
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete your account? This action cannot be undone.</p>
-                <p class="text-danger"><strong>Warning:</strong> All your data will be permanently removed from our systems.</p>
-                <div class="form-group">
-                    <label for="confirmDelete" class="form-label">Type "DELETE" to confirm:</label>
-                    <input type="text" class="form-control" id="confirmDelete" placeholder="Type DELETE here">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn" disabled>
-                    <i class="fas fa-trash me-2"></i>Delete Account
-                </button>
             </div>
         </div>
     </div>
@@ -659,9 +907,16 @@ try {
     });
 
     // Delete account confirmation
-    document.getElementById('confirmDelete').addEventListener('input', function() {
-        const confirmBtn = document.getElementById('confirmDeleteBtn');
-        confirmBtn.disabled = this.value !== 'DELETE';
+    document.getElementById('confirm_text').addEventListener('input', function() {
+        const deleteButton = document.getElementById('deleteButton');
+        deleteButton.disabled = this.value !== 'DELETE ALL';
+    });
+
+    // Delete account form confirmation
+    document.getElementById('deleteAccountForm').addEventListener('submit', function(e) {
+        if (!confirm('ARE YOU ABSOLUTELY SURE? This will delete ALL accounts in your apartment including roommates and family members. This action cannot be undone!')) {
+            e.preventDefault();
+        }
     });
 
     // Toggle switch functionality
