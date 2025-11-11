@@ -129,4 +129,3 @@ $_SESSION['otp_expiry'] = time() + 300; // 5 minutes
   </script>
 </body>
 </html>
-
