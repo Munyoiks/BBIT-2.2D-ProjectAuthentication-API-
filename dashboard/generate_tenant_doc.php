@@ -1,3 +1,4 @@
+//generate_tenant_doc.php
 <?php
 ob_start(); // Prevent any unwanted output before PDF headers
 session_start();
@@ -28,7 +29,7 @@ $conn->close();
 // PDF Class
 class PDF extends FPDF {
     function Header() {
-        $logoPath = __DIR__ . '/../assets/logo.png';
+        $logoPath = _DIR_ . '/../assets/logo.png';
         if (file_exists($logoPath)) {
             $this->Image($logoPath, 10, 8, 20);
         }
@@ -85,9 +86,9 @@ $pdf->MultiCell(0, 10,
 "Dear " . ($user['full_name'] ?? 'Tenant') . ",\n
 Welcome to Mojo Enterprise Apartments! We are delighted to have you as a potential tenant.
 
-To confirm your tenancy, an **initial deposit of KES 30,000** is required upon signing. This deposit secures your apartment and will be adjusted or refunded in accordance with our tenancy policy.
+To confirm your tenancy, an *initial deposit of KES 30,000* is required upon signing. This deposit secures your apartment and will be adjusted or refunded in accordance with our tenancy policy.
 
-After your initial payment, you will be expected to make **monthly rent payments of approximately KES 80,000** on or before the 5th day of each month.
+After your initial payment, you will be expected to make *monthly rent payments of approximately KES 80,000* on or before the 5th day of each month.
 
 Below are key tenancy rules and guidelines to ensure a comfortable and respectful living environment for all tenants:
  i).Rent must be paid on time to avoid penalties.  
@@ -105,17 +106,17 @@ We look forward to a great stay with you at Mojo  Enterprise Apartments.");
 
 // Signature Area
 $pdf->Ln(20);
-$pdf->Cell(0, 10, '_____________________________', 0, 1, 'R');
+$pdf->Cell(0, 10, '_', 0, 1, 'R');
 $pdf->Cell(0, 10, 'Authorized Signatory', 0, 1, 'R');
 
 // Safe file name
 $tenantName = $user['full_name'] ?? 'Tenant';
 $fileName = 'Tenant_Document_' . preg_replace('/\s+/', '_', $tenantName) . '.pdf';
-$savePath = __DIR__ . '/../tenant_docs/' . $fileName;
+$savePath = _DIR_ . '/../tenant_docs/' . $fileName;
 
 // Ensure folder exists
-if (!is_dir(__DIR__ . '/../tenant_docs')) {
-    mkdir(__DIR__ . '/../tenant_docs', 0777, true);
+if (!is_dir(_DIR_ . '/../tenant_docs')) {
+    mkdir(_DIR_ . '/../tenant_docs', 0777, true);
 }
 
 // Save a copy in the server
@@ -128,4 +129,3 @@ ob_end_clean();
 $pdf->Output('D', $fileName);
 exit;
 ?>
-
