@@ -10,7 +10,7 @@ if (!isset($_SESSION['user_id'])) {
 $host = 'localhost';
 $dbname = 'auth_db';
 $username = 'root';
-$password = '';
+$password = 'munyoiks7';
 
 // Initialize variables to avoid undefined warnings
 $full_name = '';
