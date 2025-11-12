@@ -1,4 +1,3 @@
-// callback_url.php
 <?php
 require_once "../auth/db_config.php";
 

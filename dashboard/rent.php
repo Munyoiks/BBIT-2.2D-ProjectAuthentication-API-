@@ -1,4 +1,4 @@
-//rent.php
+
 <?php
 session_start();
 require_once '../auth/db_config.php';

@@ -1,4 +1,3 @@
-//maintenance.php
 <?php
 session_start();
 include '../auth/db_config.php';
