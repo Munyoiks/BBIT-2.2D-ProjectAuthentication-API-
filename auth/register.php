@@ -695,7 +695,7 @@ $grouped_secondary_units = groupUnitsByFloor($secondary_units);
                     floorUnits.forEach(unit => {
                         const option = document.createElement('option');
                         option.value = unit;
-                        option.textContent = Unit ${unit};
+                        option.textContent = `Unit ${unit}`;
                         optgroup.appendChild(option);
                     });
                     
