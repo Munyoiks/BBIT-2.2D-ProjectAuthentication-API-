@@ -1,4 +1,3 @@
-//generate_tenant_doc.php
 <?php
 ob_start(); // Prevent any unwanted output before PDF headers
 session_start();
@@ -29,7 +28,7 @@ $conn->close();
 // PDF Class
 class PDF extends FPDF {
     function Header() {
-        $logoPath = _DIR_ . '/../assets/logo.png';
+        $logoPath = __DIR__ . '/../assets/logo.png';
         if (file_exists($logoPath)) {
             $this->Image($logoPath, 10, 8, 20);
         }
@@ -112,11 +111,11 @@ $pdf->Cell(0, 10, 'Authorized Signatory', 0, 1, 'R');
 // Safe file name
 $tenantName = $user['full_name'] ?? 'Tenant';
 $fileName = 'Tenant_Document_' . preg_replace('/\s+/', '_', $tenantName) . '.pdf';
-$savePath = _DIR_ . '/../tenant_docs/' . $fileName;
+$savePath = __DIR__ . '/../tenant_docs/' . $fileName;
 
 // Ensure folder exists
-if (!is_dir(_DIR_ . '/../tenant_docs')) {
-    mkdir(_DIR_ . '/../tenant_docs', 0777, true);
+if (!is_dir(__DIR__ . '/../tenant_docs')) {
+    mkdir(__DIR__ . '/../tenant_docs', 0777, true);
 }
 
 // Save a copy in the server
