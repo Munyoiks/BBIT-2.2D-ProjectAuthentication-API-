@@ -75,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <script>
                 //  Redirect to the correct dashboard location
                 setTimeout(() => {
-                    window.location.href = "http://localhost/BBIT-2.2D-ProjectAuthentication-API-/dashboard/dashboard.php";
+                    window.location.href = "http://localhost/BBIT-2.2D-ProjectAuthentication-API-1/dashboard/dashboard.php";
                 }, 2500);
             </script>
         </body>
