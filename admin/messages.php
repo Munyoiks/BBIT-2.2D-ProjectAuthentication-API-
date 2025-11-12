@@ -1,4 +1,4 @@
-// messages.php
+
 <?php
 session_start();
 require_once '../auth/db_config.php';
@@ -577,7 +577,7 @@ if ($tenant_id) {
     fileInput.addEventListener('change', function(e) {
       const label = this.parentElement;
       if (this.files.length > 0) {
-        label.innerHTML = <i class="fas fa-check"></i> ${this.files[0].name};
+        label.innerHTML = `<i class="fas fa-check"></i> ${this.files[0].name}`;
         label.style.background = '#d5f4e6';
         label.style.borderColor = '#2ecc71';
       } else {
