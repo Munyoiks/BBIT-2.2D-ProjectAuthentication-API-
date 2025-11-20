@@ -55,7 +55,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Maintenance Request | Mojo Systems</title>
+<title>Maintenance Request | Monrine Systems</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
   :root {
@@ -279,7 +279,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       <a href="dashboard.php" class="back-btn"><i class="fas fa-arrow-left"></i> Back</a>
       <div class="logo"><i class="fas fa-tools"></i></div>
       <h1>Maintenance Request</h1>
-      <p>Submit and track your service requests with Mojo Systems</p>
+      <p>Submit and track your service requests with Monrine Systems</p>
     </div>
 
     <div class="content">
@@ -347,7 +347,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     <div class="footer">
       <p>Need urgent help? Call <a href="tel:+254722877608">+254 722 877 608</a></p>
-      <p>&copy; <?= date('Y'); ?> Mojo Systems. All rights reserved.</p>
+      <p>&copy; <?= date('Y'); ?> Monrine Systems. All rights reserved.</p>
     </div>
   </div>
 </body>

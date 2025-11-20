@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Forgot Password | Mojo Tenant System</title>
+  <title>Forgot Password | Monrine Tenant System</title>
   <style>
     body {
       font-family: "Segoe UI", Arial, sans-serif;

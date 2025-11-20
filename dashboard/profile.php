@@ -152,7 +152,7 @@ $conn->close();
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>User Profile | Mojo Tenant Dashboard</title>
+  <title>User Profile | Monrine Tenant Dashboard</title>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
   <style>
     /* Your existing CSS styles remain the same */

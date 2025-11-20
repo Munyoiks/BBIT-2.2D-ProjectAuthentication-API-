@@ -78,7 +78,7 @@ session_regenerate_id(true);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mojo Tenant System | Login</title>
+    <title>Monrine Tenant System | Login</title>
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -245,7 +245,7 @@ session_regenerate_id(true);
 </head>
 <body>
 <div class="container">
-    <h2>Login to Mojo Tenant System</h2>
+    <h2>Login to Monrine Tenant System</h2>
     <p class="lead">Welcome back — enter your credentials below.</p>
 
     <?php if (!empty($error)): ?>

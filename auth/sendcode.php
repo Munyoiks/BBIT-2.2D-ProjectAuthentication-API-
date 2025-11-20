@@ -24,7 +24,7 @@ $_SESSION['otp_expiry'] = time() + 300; // 5 minutes
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Verify Code | Mojo Tenant System</title>
+  <title>Verify Code | Monrine Tenant System</title>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script src="emailConfig.js"></script>
   <style>

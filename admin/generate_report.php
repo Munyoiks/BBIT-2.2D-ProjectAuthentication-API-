@@ -126,7 +126,7 @@ try {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Financial Reports | Mojo Management System</title>
+<title>Financial Reports | Monrine Management System</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -631,7 +631,7 @@ tr:hover {
             
             // Add title
             doc.setFontSize(20);
-            doc.text('Mojo Management System - Financial Report', 20, 30);
+            doc.text('Monrine Management System - Financial Report', 20, 30);
             
             // Add date
             doc.setFontSize(12);
@@ -650,10 +650,10 @@ tr:hover {
             
             // Add note
             doc.setFontSize(10);
-            doc.text('Report generated automatically by Mojo Management System', 20, 280);
+            doc.text('Report generated automatically by Monrine Management System', 20, 280);
             
             // Save the PDF
-            doc.save('mojo_financial_report_<?= date("Y_m_d") ?>.pdf');
+            doc.save('Monrine_financial_report_<?= date("Y_m_d") ?>.pdf');
         });
     </script>
 

@@ -95,7 +95,7 @@ foreach ($tables_to_check as $table) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Database Setup - Mojo Tenant System</title>
+    <title>Database Setup - Monrine Tenant System</title>
     <style>
         body {
             font-family: Arial, sans-serif;

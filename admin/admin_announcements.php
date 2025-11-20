@@ -75,7 +75,7 @@ $implemented_suggestions = $conn->query("SELECT COUNT(*) AS c FROM tenant_sugges
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Announcements & Suggestions | Mojo Tenant Management System</title>
+<title>Announcements & Suggestions | Monrine Tenant Management System</title>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 <style>
 :root {
@@ -614,7 +614,7 @@ textarea.form-control {
 <!-- Sidebar -->
 <div class="sidebar">
   <div class="sidebar-header">
-    <h2><i class="fas fa-building"></i> Mojo Management</h2>
+    <h2><i class="fas fa-building"></i> Monrine Management</h2>
   </div>
   
   <nav class="sidebar-nav">

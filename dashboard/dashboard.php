@@ -116,7 +116,7 @@ function getRoleDisplayName($role, $is_primary) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mojo Tenant System | Dashboard</title>
+    <title>Monrine Tenant System | Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -382,7 +382,7 @@ function getRoleDisplayName($role, $is_primary) {
 
 <div class="sidebar">
     <div class="sidebar-header">
-        <h4><i class="fas fa-home me-2"></i>Mojo Tenant</h4>
+        <h4><i class="fas fa-home me-2"></i>Monrine Tenant</h4>
     </div>
     
     <div class="user-info">

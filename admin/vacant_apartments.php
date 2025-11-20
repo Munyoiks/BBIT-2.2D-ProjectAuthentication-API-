@@ -1,4 +1,4 @@
-//vacant_apartments.php
+
 <?php
 session_start();
 

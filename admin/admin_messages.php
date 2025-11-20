@@ -116,7 +116,7 @@ if ($tenant_id) {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Admin Messages | Mojo Dashboard</title>
+<title>Admin Messages | Monrine Dashboard</title>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 <style>
   :root {

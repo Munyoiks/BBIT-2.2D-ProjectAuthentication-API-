@@ -27,8 +27,8 @@ $conn->select_db($dbname);
 $sql = "
 CREATE TABLE IF NOT EXISTS system_settings (
     id INT(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
-    system_name VARCHAR(255) NOT NULL DEFAULT 'Mojo Tenant System',
-    contact_email VARCHAR(255) NOT NULL DEFAULT 'support@mojosystem.com',
+    system_name VARCHAR(255) NOT NULL DEFAULT 'Monrine Tenant System',
+    contact_email VARCHAR(255) NOT NULL DEFAULT 'support@Monrinesystem.com',
     grace_period INT(11) NOT NULL DEFAULT 5,
     reminder_day INT(11) NOT NULL DEFAULT 28,
     notifications TINYINT(1) NOT NULL DEFAULT 1,

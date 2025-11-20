@@ -6,7 +6,7 @@ session_start();
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mojo Tenant System</title>
+  <title>Monrine Tenant System</title>
   <style>
     * {
       margin: 0;
@@ -258,7 +258,7 @@ session_start();
 
   <div class="container">
     <div class="logo">🏠</div>
-    <h1>Mojo Tenant System</h1>
+    <h1>Monrine Tenant System</h1>
     <p class="subtitle">Streamline your property management with our comprehensive tenant and rent tracking system</p>
 
     <div class="features">
@@ -278,7 +278,7 @@ session_start();
 
     <footer>
       <p>Professional Property Management Solution</p>
-      <p class="company-name">© <?php echo date('Y'); ?> Mojo Electrical Enterprise</p>
+      <p class="company-name">© <?php echo date('Y'); ?> Monrine Electrical Enterprise</p>
     </footer>
   </div>
 

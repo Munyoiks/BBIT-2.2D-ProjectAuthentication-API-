@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Set Password – Mojo Tenant</title>
+    <title>Set Password – Monrine Tenant</title>
     <style>
         body{font-family:system-ui,sans-serif;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
         .box{background:white;padding:2.5rem;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.2);width:100%;max-width:420px;text-align:center}
@@ -91,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 <div class="box">
-    <div class="logo">Mojo Tenant</div>
+    <div class="logo">Monrine Tenant</div>
     <h2>Set Your Password</h2>
     <p>Hello <strong><?=htmlspecialchars($family['full_name'])?></strong>,<br>
        You've been invited to join <strong>Unit <?=htmlspecialchars($family['unit_number'])?></strong>.</p>

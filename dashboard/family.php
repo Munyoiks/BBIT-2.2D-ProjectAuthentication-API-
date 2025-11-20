@@ -29,7 +29,7 @@ function render_header() {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Family Members | Mojo Tenant</title>
+    <title>Family Members | Monrine Tenant</title>
     <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
     <script src="../auth/emailConfig.js"></script>
     <style>
@@ -294,7 +294,7 @@ function render_footer() {
             const data = {
                 full_name: name,
                 invitation_link: link,
-                primary_tenant: "Mojo Tenant Admin",
+                primary_tenant: "Monrine Tenant Admin",
                 unit_number: unit,
                 role: window.formatRole(role),
                 expires_at: window.getExpirationDate(7)

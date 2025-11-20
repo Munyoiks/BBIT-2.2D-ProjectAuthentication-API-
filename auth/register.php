@@ -351,7 +351,7 @@ $grouped_secondary_units = groupUnitsByFloor($secondary_units);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Register | Mojo Tenant System</title>
+    <title>Register | Monrine Tenant System</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {
@@ -573,7 +573,7 @@ $grouped_secondary_units = groupUnitsByFloor($secondary_units);
         </h2>
         
         <div class="subtitle">
-            Join Mojo Tenant System - Your Smart Living Solution
+            Join Monrine Tenant System - Your Smart Living Solution
         </div>
         
         <?php if (isset($error_message)): ?>

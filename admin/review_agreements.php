@@ -154,7 +154,7 @@ $conn->close();
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agreement Management | Mojo Admin</title>
+    <title>Agreement Management | Monrine Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -485,7 +485,7 @@ $conn->close();
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <h2><i class="fas fa-building"></i> Mojo Management</h2>
+                <h2><i class="fas fa-building"></i> Monrine Management</h2>
             </div>
             <nav class="sidebar-nav">
                 <a href="admin_dashboard.php">

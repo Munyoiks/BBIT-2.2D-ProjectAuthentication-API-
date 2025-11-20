@@ -20,7 +20,7 @@ if (isset($_GET['resend'])) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Verify Email | Mojo Tenant System</title>
+  <title>Verify Email | Monrine Tenant System</title>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script src="emailConfig.js"></script>
 

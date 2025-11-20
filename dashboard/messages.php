@@ -124,7 +124,7 @@ if ($stmt) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Messages | Mojo Tenant</title>
+    <title>Messages | Monrine Tenant</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <style>
         :root {

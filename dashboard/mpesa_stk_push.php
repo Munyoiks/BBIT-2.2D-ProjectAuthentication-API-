@@ -53,7 +53,7 @@ $curl_post_data = [
     'PartyB' => $businessShortCode,
     'PhoneNumber' => $phone,
     'CallBackURL' => $callbackURL,
-    'AccountReference' => 'MojoRent',
+    'AccountReference' => 'MonrineRent',
     'TransactionDesc' => 'Monthly Rent Payment'
 ];
 

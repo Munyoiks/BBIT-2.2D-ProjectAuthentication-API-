@@ -12,7 +12,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['is_admin'] != 1) {
 // Helper function to get system settings
 function getSystemSettings($conn) {
     $defaults = [
-        'system_name' => 'Mojo Tenant System',
+        'system_name' => 'Monrine Tenant System',
         'contact_email' => 'ianmunyoiks@gmail.com',
         'grace_period' => 5,
         'reminder_day' => 28,
@@ -50,10 +50,10 @@ function sendTestNotification($conn) {
         
         $subject = "System Test Notification";
         $message = "Hello " . $admin['full_name'] . ",\n\n";
-        $message .= "This is a test notification from your Mojo Tenant System.\n\n";
+        $message .= "This is a test notification from your Monrine Tenant System.\n\n";
         $message .= "If you can see this inside your Notifications panel, your system notifications are working correctly.\n\n";
         $message .= "System Time: " . date('Y-m-d H:i:s') . "\n\n";
-        $message .= "Thank you!\nMojo Tenant System";
+        $message .= "Thank you!\nMonrine Tenant System";
         
         $title = "System Test Notification";
         $escaped_message = $conn->real_escape_string($message);
@@ -424,7 +424,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Load current settings with proper NULL value handling
 $defaults = [
-    'system_name' => 'Mojo Tenant System',
+    'system_name' => 'Monrine Tenant System',
     'contact_email' => 'ianmunyoiks@gmail.com',
     'grace_period' => 5,
     'reminder_day' => 28,

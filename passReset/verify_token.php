@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Reset Password | Mojo Tenant System</title>
+  <title>Reset Password | Monrine Tenant System</title>
   <style>
     body {
       font-family: "Segoe UI", Arial, sans-serif;

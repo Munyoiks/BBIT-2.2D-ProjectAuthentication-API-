@@ -59,7 +59,7 @@ $conn->close();
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Announcements | Mojo Tenant Dashboard</title>
+  <title>Announcements | Monrine Tenant Dashboard</title>
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
   <style>
     :root {

@@ -49,7 +49,7 @@
         email: email,
         full_name: data.full_name || 'New Occupant',
         invitation_link: data.invitation_link,
-        primary_tenant: data.primary_tenant || 'Mojo Admin',
+        primary_tenant: data.primary_tenant || 'Monrine Admin',
         unit_number: data.unit_number,
         role: data.role || 'Family Member',
         expires_at: data.expires_at
