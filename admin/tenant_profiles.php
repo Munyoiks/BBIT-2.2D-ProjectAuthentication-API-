@@ -1,4 +1,3 @@
-// tenant_profiles.php
 <?php
 session_start();
 

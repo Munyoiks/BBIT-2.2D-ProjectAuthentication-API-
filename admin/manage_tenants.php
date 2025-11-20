@@ -1,4 +1,4 @@
-// manage_tenants.php
+
 
 <?php
 // Include database connection

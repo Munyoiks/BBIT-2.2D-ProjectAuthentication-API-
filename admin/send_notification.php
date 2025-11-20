@@ -1,4 +1,4 @@
-// send_notification.php
+
 <?php
 // Include database connection
 include_once '../auth/db_config.php';

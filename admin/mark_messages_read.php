@@ -1,4 +1,3 @@
-// mark_messages_read.php
 <?php
 
 session_start();

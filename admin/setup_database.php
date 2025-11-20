@@ -1,4 +1,3 @@
-//setup_database.php
 <?php
 session_start();
 

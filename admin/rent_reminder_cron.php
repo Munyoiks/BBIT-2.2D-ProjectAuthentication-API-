@@ -1,4 +1,4 @@
-// rent_reminder_cron.php
+
 <?php
 
 require_once '../auth/db_config.php'; // Your database connection file

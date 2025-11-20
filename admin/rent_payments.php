@@ -1,4 +1,4 @@
-//rent_payments.php
+
 <?php
 session_start();
 

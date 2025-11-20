@@ -1,4 +1,3 @@
-// mpesa_transactions.php
 <?php
 session_start();
 

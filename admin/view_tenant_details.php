@@ -1,5 +1,3 @@
-//view_tenant_details.php
-
 <?php
 // Include database connection
 include_once '../auth/db_config.php';
